@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState,useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import useBillsStore from "../../../../store/billsStore";
 import logo from "../../../../../public/ANJITLOGOBLACK.svg"
-import Image from 'next/image'
-import BillComponent from "../components/BillComponent";
-import dynamic from "next/dynamic";
-import { Modal,Button } from "flowbite-react";
 
+import jsPDF from 'jspdf'
+import hanumanLogo from "../../../../../public/hanumanlogo.png"
+import { LuHeartHandshake } from "react-icons/lu";
+import { useBreakpoint } from "../../../../app/bills/hooks/useBreakPoint"
+import brandLogo from "../../../../../public/assets/footerlogo.svg"
+import { Dialog,DialogActions,DialogContent,DialogTitle,Button } from "@mui/material";
 
-import { useRef } from "react";
-
+import FinalBillComp from "./components/FinalBillComp"
 
 import PDFBillPage from "../components/PDFViewer/PDFBillPage";
 
@@ -19,95 +20,126 @@ import PDFBillPage from "../components/PDFViewer/PDFBillPage";
 
 
 const BillPage = () => {
+  const printRef = useRef(null);
     const { id } = useParams();
     const router = useRouter();
-    const { bills, bill, fetchBill, fetchBills, loading } = useBillsStore();
+   const { bill, prevId, nextId, fetchBill, loading } = useBillsStore();
+
     const [openModal, setOpenModal] = useState(false);
 
-    const handleBillPrint = ()=>{
-        setOpenModal(!openModal)
-    }
+    const {isMobile} = useBreakpoint();
+
+    
     console.log(bill)
   
-    useEffect(() => {
-      fetchBills();
-
-    }, []);
+   const date = new Date
   
     useEffect(() => {
       if (id) {
         fetchBill(id);
+        console.log("prev",prevId,nextId)
       }
     }, [id]);
   
-    if (loading) return <p>Loading...</p>;
-    if (!bill) return <p>Bill not found</p>;
-    if (!bills.length) return <p>Loading bills...</p>;
+    if (loading||!bill) return <p>Loading...</p>;
+  
+    const handlePrev = () => {
+  if (prevId) {
+    router.push(`/admin/bills/${prevId}`);
+  }
+};
+
+const handleNext = () => {
+  console.log("prev",prevId,nextId)
+  if (nextId) {
+    router.push(`/admin/bills/${nextId}`);
+  }
+};
+
+  
+
+
+    const handleBillPrint =()=>{
+      setOpenModal(!openModal)
+    }
+
 
    
   
-    const currentIndex = bills.findIndex((b) => Number(b.id) === Number(id));
-    if (currentIndex === -1) return <p>Bill not found</p>;
+    
+    
   
-    const prevBill = currentIndex > 0 ? bills[currentIndex - 1] : null;
-    const nextBill = currentIndex < bills.length - 1 ? bills[currentIndex + 1] : null;
-  
+   
     return (
+      <>
       <div key={id}>
 
 
           
 
 
-        <div className="m-3 flex justify-end gap-1">
+        <div className="m-3 flex justify-end gap-1 print:hidden ">
         <div>
-          <button onClick={handleBillPrint} className="bg-black text-white px-4 py-2 rounded">Print</button>
+          <Button onClick={handleBillPrint} >Print</Button>
         </div>
           <button
             className={`px-4 py-2 rounded ${
-              prevBill ? "bg-black text-white" : "bg-gray-400 text-gray-700 cursor-not-allowed"
+              prevId? "bg-black text-white cursor-pointer ":" bg-gray-400 text-gray-700 cursor-not-allowed "
             }`}
-            disabled={!prevBill}
-            onClick={() => prevBill && router.push(`/admin/bills/${prevBill.id}`)}
+            disabled={!prevId}
+            onClick={ handlePrev}
           >
             ⬅ Prev
           </button>
   
           <button
             className={`px-4 py-2 rounded ${
-              nextBill ? "bg-black text-white" : "bg-gray-400 text-gray-700 cursor-not-allowed"
+              nextId? "bg-black text-white cursor-pointer ":"  bg-gray-400 text-gray-700 cursor-not-allowed "
             }`}
-            disabled={!nextBill}
-            onClick={() => nextBill && router.push(`/admin/bills/${nextBill.id}`)}
+            disabled={!nextId}
+            onClick={ handleNext}
           >
             Next ➡
           </button>
         </div>
 
+          <div className="flex flex-col items-center p-4">
+      {/* Screen-only: show just once */}
+      <div className="screen-only scale-[35%] md:scale-50 lg:scale-100 ">
+        <FinalBillComp billData={bill} />
+      </div>
 
-        <div>
-          <BillComponent billData={bill} />
-        </div>
+    
 
-        <Modal show={openModal} onClose={() => setOpenModal(false)}>
-        <Modal.Header>Print Bill</Modal.Header>
-        <Modal.Body>
+     
+    </div>
+       
+
+        <Dialog  fullWidth={true}
+
+        maxWidth={isMobile?"xs":"lg"} open={openModal} onClose={() => setOpenModal(false)}>
+        <DialogTitle>Print Bill</DialogTitle>
+        <DialogContent>
               <PDFBillPage billData={bill} />
-        </Modal.Body>
-        <Modal.Footer>
+        </DialogContent>
+        <DialogActions>
          
-          <Button color="gray" onClick={() => setOpenModal(false)}>
+          <Button  onClick={() => setOpenModal(false)}>
             Close
           </Button>
-        </Modal.Footer>
-      </Modal>
+        </DialogActions>
+      </Dialog>
                
 
         
       
   
       </div>
+          
+         
 
+
+</>
     );
   };
 

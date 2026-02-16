@@ -1,11 +1,13 @@
 
-"use client";
+'use client';
 
 import { Button, Checkbox, Label, Modal, TextInput } from "flowbite-react";
 import { useEffect, useState } from "react";
 import { useAgencyStore,useAgencyEditModal } from "../../../../store/agencyStore";
 
+
 const AgencyEditModal=()=> {
+
 
   const { isOpen, agencyData, closeModal } = useAgencyEditModal();
   const {updateAgency} = useAgencyStore()
@@ -29,7 +31,7 @@ const AgencyEditModal=()=> {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await updateAgency(agencyData.id, formData);
+    await updateAgency(agencyData._id, formData);
     closeModal();
   };
 

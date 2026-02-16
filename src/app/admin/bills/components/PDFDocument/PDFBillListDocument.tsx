@@ -138,6 +138,9 @@ const styles = StyleSheet.create({
   smallCol: {
     flex: 0.3,
   },
+  lgCol:{
+    flex:1
+  },
   toPay:{
     color:"black",
     
@@ -160,6 +163,9 @@ const PDFBillListDocument: React.FC<PDFBillListDocumentProps> = ({ billListData 
         {/* Header Section */}
         <View style={styles.headerContainer}>
           <View style={styles.leftSection}>
+            <View style={{overflow:"hidden",marginBottom:4,backgroundColor:"black",borderRadius:4,alignSelf:"flex-start"}} >
+              <Text style={{color:"white",fontSize:20,padding:2,fontFamily:"Helvetica-Bold"}} >TRIP SHEET</Text>
+            </View>
             <Text style={styles.text}>Contact: +91 9876543210</Text>
             <Text style={styles.text}>Email: info@aonji.com</Text>
             
@@ -171,7 +177,7 @@ const PDFBillListDocument: React.FC<PDFBillListDocumentProps> = ({ billListData 
             <Text style={styles.address}>Beside New RTC Bustand, Proddatur, 516360</Text>
           </View>
           <View style={styles.rightSection}>
-            <Image src="/pdfLogo.png" style={{ width: 80,  }} />
+              <Image src="/aonji-final-bw-logo.png" style={{ width: 100,  }} />
           </View>
         </View>
 
@@ -187,25 +193,25 @@ const PDFBillListDocument: React.FC<PDFBillListDocumentProps> = ({ billListData 
         <View style={styles.tableContainer}>
           <View style={[styles.tableRow, styles.header]}>
             <Text style={[styles.tableCol, styles.text,styles.smallCol]}>Sl No.</Text>
-            <Text style={[styles.tableCol, styles.text,styles.smallCol]}>Bill No</Text>
-            <Text style={[styles.tableCol, styles.text]}>Consigner</Text>
+            <Text style={[styles.tableCol, styles.text,{flex:1}]}>Bill No</Text>
+            <Text style={[styles.tableCol, styles.text,{flex:1}]}>Consigner</Text>
             <Text style={[styles.tableCol, styles.text,{flex:3}]}>Consignees</Text>
-            <Text style={[styles.tableCol, styles.text,{flex:.5}]}>Total Lot</Text>
-            <Text style={[styles.tableCol, styles.text]}>Amount</Text>
-            <Text style={[styles.tableCol, styles.text,{flex:.5}]}>Payment</Text>
+            <Text style={[styles.tableCol, styles.text,{flex:.5,paddingHorizontal:.1}]}>Qty</Text>
+            <Text style={[styles.tableCol, styles.text,{flex:.5,paddingHorizontal:.1}]}>Amount</Text>
+            <Text style={[styles.tableCol, styles.text,{flex:.5,paddingHorizontal:.1}]}>Payment</Text>
           </View>
           {billListData.length > 0 ? (
             billListData.map((bill, index) => (
-              <View key={bill.id} style={[styles.tableRow,bill.paymentStatus?styles.paid :styles.toPay ]} >
+              <View key={bill.id || bill.lrNumber || index} style={[styles.tableRow,bill.paymentStatus?styles.paid :styles.toPay ]} >
                 <Text style={[styles.tableCol, styles.text,styles.smallCol]}>{index + 1}</Text>
-                <Text style={[styles.tableCol, styles.text,styles.smallCol]}>{bill.lrNumber}</Text>
-                <Text style={[styles.tableCol, styles.text]}>{bill.consigner.name}</Text>
-                <Text style={[styles.tableCol, styles.text,{flex:3,padding:.5}]}>
+                <Text style={[styles.tableCol, styles.text,styles.smallCol,{flex:1}]}>{bill.lrNumber}</Text>
+                <Text style={[styles.tableCol, styles.text,{flex:1}]}>{bill.consigner.name}</Text>
+                <Text style={[styles.tableCol, styles.text,{flex:3,padding:.3}]}>
                   {bill.consignees?.map((c) => c.name).join(", ") || "N/A"}
                 </Text>
-                <Text style={[styles.tableCol, styles.text,{flex:.5}]}>{bill.totalNumOfParcels}</Text>
-                <Text style={[styles.tableCol, styles.text]}>Rs. {bill.totalAmount}/-</Text>
-                <Text style={[styles.tableCol, styles.text,{flex:.5, }]}>
+                <Text style={[styles.tableCol, styles.text,{flex:.5,paddingHorizontal:.1}]}>{bill.totalNumOfParcels}</Text>
+                <Text style={[styles.tableCol, styles.text,{flex:.5,paddingHorizontal:.1}]}>Rs.{bill.totalAmount}/-</Text>
+                <Text style={[styles.tableCol, styles.text,{flex:.5,paddingHorizontal:.1 }]}>
                   {bill.paymentStatus ? "Paid" : "To Pay"}
                 </Text>
               </View>
@@ -235,29 +241,24 @@ const PDFBillListDocument: React.FC<PDFBillListDocumentProps> = ({ billListData 
 
 
             
-             if ({charges?.outStationCharges.length!==0}) {
-               
-              charges?.outStationCharges?.map((value,index)=>(
-                
-                <View key={index} style={[styles.tableRow]}  >
-                     <Text  style={[styles.tableCol,styles.text,]} > {value.articles} </Text>
-                     <Text  style={[styles.tableCol,styles.text,]} >Rs.{value.charge} </Text>
-                     <Text  style={[styles.tableCol,styles.text,]} >Rs.{value.chargeAmount}/- </Text>
-                     </View>
+          {charges?.outStationCharges && charges.outStationCharges.length !== 0 ? (
+  charges.outStationCharges.map((value, index) => (
+    <View key={index} style={[styles.tableRow]}>
+      <Text style={[styles.tableCol, styles.text]}>{value.articles}</Text>
+      <Text style={[styles.tableCol, styles.text]}>Rs.{value.charge}</Text>
+      <Text style={[styles.tableCol, styles.text]}>Rs.{value.chargeAmount}/-</Text>
+    </View>
+  ))
+) : (
+  <View style={[styles.tableRow]}>
+    <Text style={[styles.tableCol, styles.text]}>N/A</Text>
+    <Text style={[styles.tableCol, styles.text]}>N/A</Text>
+    <Text style={[styles.tableCol, styles.text]}>N/A</Text>
+  </View>
+)}
 
-              ))}
-              
-              
 
-              
-              
-              else {
-              <View  style={[styles.tableRow]}  >
-              <Text  style={[styles.tableCol,styles.text,]} > N/A </Text>
-              <Text  style={[styles.tableCol,styles.text,]} >N/A </Text>
-              <Text  style={[styles.tableCol,styles.text,]} >N/A </Text>
-              </View>
-             }
+
              <View style={{flexDirection:"row",fontSize:"12"}} >
                 <Text  >Total Amount:</Text>
                 <Text  >Rs.{charges?.totalOutstationCharges?charges.totalOutstationCharges:"N/A"} </Text>
@@ -279,7 +280,7 @@ const PDFBillListDocument: React.FC<PDFBillListDocumentProps> = ({ billListData 
 
           </View>
           <View style={[styles.tableRow]} >
-            <Text style={[styles.tableCol,styles.text,]} >Rs.{charges?.totalAmount} </Text>
+            <Text style={[styles.tableCol,styles.text,]} >Rs.{charges?.totalUnpaidAmount} </Text>
             <Text style={[styles.tableCol,styles.text,]} >{charges?.agencyCharges.chargeRate}% </Text>
             <Text style={[styles.tableCol,styles.text,]} >Rs.{charges?.agencyCharges.chargeAmount} </Text>
 

@@ -1,0 +1,36 @@
+.custom-grid .ag-row.pinned-row {
+    font-weight: bold;
+    background-color: #f0f0f0;
+  }
+  
+
+  .ag-theme-alpine .ag-row.pinned-row {
+    font-weight: bold; /* Make the entire footer row bold */
+  }
+  
+  .ag-theme-alpine .ag-row.pinned-row .ag-cell[col-id='amount'] {
+    font-weight: bold; /* Specifically target the 'amount' column */
+  }
+
+  /* styles/DataGridStyles.css */
+.footer-bold {
+    font-weight: bold;
+  }
+  
+
+
+  .ag-cell-truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ag-cell-wrap-text {
+    white-space: normal !important;  /* Allow text to wrap */
+    word-wrap: break-word !important;
+    line-height: 1.5;  /* Improve spacing */
+  }
+  
+  .row-success{
+    background-color: #357a38 !important;
+  }

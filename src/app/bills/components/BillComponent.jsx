@@ -1,10 +1,13 @@
 import React from "react";
-import logo from "../../../../../public/ANJITLOGOBLACK.svg";
+import logo from "../../../../public/ANJITLOGOBLACK.svg"
 import Image from "next/image";
 import { LuHeartHandshake } from "react-icons/lu";
 
 const BillComponent = ({ billData }) => {
   const date = new Date();
+  console.log("bill data component",billData);
+  
+
 
   return (
     <div className="flex justify-center items-center my-6 px-4">
@@ -56,7 +59,7 @@ const BillComponent = ({ billData }) => {
         <div className="border rounded-lg p-4 bg-white">
           <div className="text-sm font-roboto mx-2">
             <div className="flex justify-between text-base">
-              <p>LR NO.: {billData.id}</p>
+              <p>LR NO.: { billData?.lrNumber}</p>
               <p>DATE: {date.toLocaleDateString("hi-IN")}</p>
             </div>
 
@@ -68,18 +71,18 @@ const BillComponent = ({ billData }) => {
               </div>
 
               <div className="border p-3 rounded-lg">
-                <p>To: {billData.to}</p>
-                <p>Agency: {billData.agency.name}</p>
-                <p>Phone: {billData.agency.phone}</p>
+                <p>To: {billData?.to}</p>
+                <p>Agency: {billData?.agency?.name}</p>
+                <p>Phone: {billData?.agency?.phone}</p>
               </div>
 
               <div className="border p-3 rounded-lg">
-                <p>Consigner: {billData.consigner.name}</p>
-                <p>Phone: {billData.consigner.phone}</p>
-                <p>Address: {billData.consigner.address}</p>
+                <p>Consigner: {billData?.consigner?.name}</p>
+                <p>Phone: {billData?.consigner?.phone}</p>
+                <p>Address: {billData?.consigner?.address}</p>
                 <p className="font-bold">
-                  Total Amount: <span>₹</span> {billData.totalAmount}/-
-                  {billData.paymentStatus ? <span> Paid</span> : <span> To Pay</span>}
+                  Total Amount: <span>₹</span> {billData?.totalAmount}/-
+                  {billData?.paymentStatus ? <span> Paid</span> : <span> To Pay</span>}
                 </p>
               </div>
             </div>
@@ -104,13 +107,13 @@ const BillComponent = ({ billData }) => {
                   <tr key={index} className="bg-white border-b">
                     <td className="px-3 py-2">{index + 1}</td>
                     <td className="px-3 py-2 font-medium text-gray-900">
-                      {item.name}
+                      {item?.name}
                     </td>
-                    <td className="px-3 py-2">{item.Phone}</td>
-                    <td className="px-3 py-2">{item.numOfParcels}</td>
-                    <td className="px-3 py-2">{item.type}</td>
-                    <td className="px-3 py-2">₹{item.amount}</td>
-                    <td className="px-3 py-2">{item.address}</td>
+                    <td className="px-3 py-2">{item?.phone}</td>
+                    <td className="px-3 py-2">{item?.numOfParcels}</td>
+                    <td className="px-3 py-2">{item?.type}</td>
+                    <td className="px-3 py-2">₹{item?.amount}</td>
+                    <td className="px-3 py-2">{item?.address}</td>
                   </tr>
                 ))}
               </tbody>

@@ -33,25 +33,25 @@ const Footer = () => {
               </h4>
               <ul className="text-sm  transition-all duration-500">
                 <li className="mb-6">
-                  <a href="/" className="text-gray-600 hover:text-gray-900">
+                  <a href="/" className="text-gray-600 hover:text-blue-500">
                     Home
                   </a>
                 </li>
                 <li className="mb-6">
                   <a
                     href="about"
-                    className=" text-gray-600 hover:text-gray-900"
+                    className=" text-gray-600 hover:text-blue-500"
                   >
                     About
                   </a>
                 </li>
                 <li className="mb-6">
-                  <a href="" className=" text-gray-600 hover:text-gray-900">
+                  <a href="" className=" text-gray-600 hover:text-blue-500">
                     Services
                   </a>
                 </li>
                 <li>
-                  <a href="" className=" text-gray-600 hover:text-gray-900">
+                  <a href="" className=" text-gray-600 hover:text-blue-500">
                     contact
                   </a>
                 </li>
@@ -64,18 +64,18 @@ const Footer = () => {
               </h4>
               <ul className="text-sm  transition-all duration-500">
                 <li className="mb-6">
-                  <a href=" " className="text-gray-600 hover:text-gray-900">
-                    Careers
+                  <a href="/bills" className="text-gray-600 hover:text-blue-500">
+                    Lorry Reciepts (LR)
+                  </a>
+                </li>
+                <li className="mb-6">
+                  <a href=" " className=" text-gray-600 hover:text-blue-500">
+                    Agent Login
                   </a>
                 </li>
                 <li className="mb-6">
                   <a href=" " className=" text-gray-600 hover:text-gray-900">
-                    Patnerships
-                  </a>
-                </li>
-                <li className="mb-6">
-                  <a href=" " className=" text-gray-600 hover:text-gray-900">
-                    Our Agencies
+                     track Your Shipment
                   </a>
                 </li>
               </ul>
@@ -102,7 +102,7 @@ const Footer = () => {
                   </a>
                 </li>
                 <li className="mb-6">
-                  <a href=" " className=" text-gray-600 hover:text-gray-900">
+                  <a href=" " className=" text-gray-600 hover:text-blue-500">
                     FAQs & Help
                   </a>
                 </li>
@@ -117,7 +117,7 @@ const Footer = () => {
                 <li className="mb-6">
                   <a
                     href="javascript:;"
-                    className="text-gray-600 hover:text-gray-900"
+                    className="text-gray-600 hover:text-blue-500"
                   >
                     Location
                   </a>
@@ -125,7 +125,7 @@ const Footer = () => {
                 <li className="mb-6">
                   <a
                     href="javascript:;"
-                    className=" text-gray-600 hover:text-gray-900"
+                    className=" text-gray-600 hover:text-blue-500"
                   >
                     New Updates
                   </a>
@@ -162,7 +162,7 @@ const Footer = () => {
                 </a>
                 <a
                   href="javascript:;"
-                  className="w-9 h-9 rounded-full bg-indigo-600 flex justify-center items-center hover:bg-indigo-800"
+                  className="w-9 h-9 rounded-full bg-indigo-600 flex justify-center items-center hover:bg-indigo-300"
                 >
                   <svg
                     className="w-[1.25rem] h-[1.125rem] text-white"

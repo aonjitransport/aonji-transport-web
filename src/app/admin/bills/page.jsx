@@ -1,15 +1,31 @@
 "use client";
 
-import React, { useEffect, useRef, useState, } from "react";
+import React, { use, useEffect, useRef, useState,useMemo } from "react";
+// Custom cell renderer for Delivery status
+const DeliveryStatusRenderer = (props) => {
+  const value = props.value;
+  if (value === true) {
+    return (
+      <span style={{ color: 'green', fontWeight: 'bold', fontSize: '1.2em' }} title="Delivered">✓</span>
+    );
+  } else {
+    return (
+      <span style={{ color: 'red', fontWeight: 'bold', fontSize: '1.2em' }} title="Not Delivered">✗</span>
+    );
+  }
+};
+
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import "./styles/dataGridStyles.css";
 import useBillsStore from "../../../store/billsStore"; // Zustand Store
+import { useAgencyStore } from "../../../store/agencyStore";
+import useTripsStore from "../../../store/tripsStore";
 import { FaDownload } from "react-icons/fa";
 import { IoPrint } from "react-icons/io5";
-import PDFBillListPage from "./components/PDFViewer/PDFBillListPage";
-import { Modal, Button } from "flowbite-react";
-import { TextInput, Label } from "flowbite-react";
+
+
+
 import { useRouter } from "next/navigation";
 
 
@@ -32,14 +48,24 @@ import loadingAnimationData from "../../../../public/assets/animations/aonjiLoad
 
 import { saveAs } from 'file-saver';
 import { pdf } from '@react-pdf/renderer';
-import PDFBillListDocument from "./components/PDFDocument/PDFBillListDocument";
+
 import {useReactToPrint } from "react-to-print"
 import html2canvas  from "html2canvas"
 import jsPDF from 'jspdf'
 import { useBreakpoint } from "./hooks/useBreakPoint";
-import PdfComponentToPrint from "./components/PdfComponentToPrint";
+
 import logo from "../../../../public/ANJITLOGOBLACK.svg"
+import {succesTickLottie} from "../../../../public/assets/animations/success_tick_lottie.json"
 import Image from 'next/image'
+
+import { Dialog, DialogActions, DialogContent, DialogTitle, Select, TextField,DialogContentText } from "@mui/material";
+import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
+import MenuItem from '@mui/material/MenuItem';
+import  { InputLabel } from "@mui/material";
+import  FormControl from "@mui/material/FormControl";
+import Button from  "@mui/material/Button";
+import { set } from "mongoose";
 
 
 
@@ -139,15 +165,27 @@ const DataGrid = () => {
     
 
 
+   
+    const [filterByAreaCheckedState, setFilterByAreaCheckedState] = useState(false);
+    const [openTripSuccessDialog ,setOpenTripSuccessDialog]=useState(false)
   
   // over all bills, current bills state
   const { bills, fetchBills, updateBill } = useBillsStore();
+  //fileter bills by month, year, city
+  const[filteredBills, setFilteredBills] = useState([])
+
+
   // bills that are about to deliver which are got from trip. uses tripIds state to set this state
   const [deliveryBillsList,setdeliveryBillsList]=useState([])
   // unpaid bills of the deliveryBillsList state. to get total amount and total charge we use.
   const [unpaidBillsList,setUnpaidBillsList]=useState([])
+
+
+
   const [loading, setLoading] = useState(true);
 
+  //trip store
+  const { createTrip,tripCreateStatus } = useTripsStore();
   
   const [openPdfModal, setOpenPdfModal] = useState(false);
   const [openChargeseModal, setOpenChargesModal] = useState(false);
@@ -161,74 +199,57 @@ const DataGrid = () => {
   const [billsReqBody, setBillsReqBody] = useState({
     month: "",
     year: "",
-    city: "",
+    to: "",
+    agencyName:"",
+    agencyId:"",
+    deliveryStatus: false, // null means no filter, true or false to filter accordingly
   });
 
+  const fetchFilteredBills = async (filters) => {
+  const params = new URLSearchParams(filters).toString();
+  const res = await fetch(`/api/bills?${params}`);
+  console .log("fetching filtered bills with params:", params);
+  const data = await res.json();
+  setFilteredBills(data);
+  console.log("Filtered bills fetched:", data);
+  
+};
 
-  const [outStationCharges,setOutStationCharges]=useState([{
-    articles:0,
-    charge:10,
-    chargeAmount:0,
-    addedFlag:false
-  }])
+// Call fetchFilteredBills({ year, month, to }) when filters change
+useEffect(() => {
+  console.log ("Filters changed, fetching bills with:", billsReqBody);
+  fetchFilteredBills({
+    month: billsReqBody.month,
+    year: billsReqBody.year,
+    to: billsReqBody.to,
+    agencyName: billsReqBody.agencyName,
 
+    deliveryStatus: billsReqBody.deliveryStatus
+  });
+}, [billsReqBody.month, billsReqBody.year, billsReqBody.to,billsReqBody.agencyName,billsReqBody.deliveryStatus]);
+
+
+
+
+  
 
 
   const [agencyCommissionCharges,setAgencyCommissionCharges]=useState({chargeAmount:0,chargeRate:10,addedFlag:false,})
  
 
  
-  const [Charges,setCharges]=useState({ totalArticels:0,totalAmount:0,agencyCharges:agencyCommissionCharges,outStationCharges:outStationCharges,grandTotalChargeAmount:0,totalOutstationCharges:0,netPayableAmount:0,totalUnpaidAmount:0,driverName:"" })
+  const [Charges,setCharges]=useState({ totalArticels:0,totalAmount:0,agencyCharges:agencyCommissionCharges,grandTotalChargeAmount:0,netPayableAmount:0,totalUnpaidAmount:0,driverName:"" })
+  
+
+
+  
+
+
+
+
+
  
-
-
-
-  const handleAddOutstationCharge = (index) => {
-          // Get the current charge details from the state at the given index
-        const currentCharge = outStationCharges[index];
-
-        // Check if articles and charge values are valid
-        if (currentCharge.articles > 0 && currentCharge.charge > 0) {
-          // Calculate the chargeAmount based on articles and charge per article
-          const chargeAmount = currentCharge.articles * currentCharge.charge;
-
-          // Update the state with the new chargeAmount and set addedFlag to true
-          const updatedCharges = [...outStationCharges];
-          updatedCharges[index].chargeAmount = chargeAmount; // Set calculated charge amount
-          updatedCharges[index].addedFlag = true; // Mark it as added
-
-          // Update the state with the new list
-          setOutStationCharges(updatedCharges);
-        } else {
-          // If articles or charge are not valid, show an alert or handle error
-          alert('Please ensure articles and charge values are valid');
-        }
-  };
- 
-  const handleOutstationChargesRemoveField = (index) => {
-    const updatedDetails = outStationCharges.filter((_, i) => i !== index);
-    setOutStationCharges(updatedDetails);
-  };
-
-  const handleOnChangeOutstationCharges = (index, name, value) => {
-    const updatedDetails = [...outStationCharges];
-    updatedDetails[index][name] = value;
-    setOutStationCharges(updatedDetails);
-  };
- 
-  const handleAddOutstationField = ()=>{
-    setOutStationCharges(prevState=>[
-      ...prevState,
-      {
-        articles:0,
-        charge:10,
-        chargeAmount:0,
-        addedFlag:false
-      }
-
-    ])
-  }
-
+  
   
 
   const handleOnChangeAgencyCommisionCharges = (name, value) => {
@@ -238,33 +259,7 @@ const DataGrid = () => {
   const handleOnChangeChargesInput =(name,value)=>{
     setCharges((prevState) => ({ ...prevState, [name]: value }));
   }
-  useEffect(() => {
-    // Calculate total outstation charges first
-    const totalOutstationCharges = outStationCharges.reduce((acc, charge) => acc + charge.chargeAmount, 0);
-  
-    // Get the agency commission charge
-    const agencyCharge = agencyCommissionCharges.chargeAmount;
-  
-    // Calculate the grand total charge amount
-    const grandTotalChargeAmount = totalOutstationCharges + agencyCharge;
-  
-    // Calculate net payable amount
-    const netPayableAmount = Charges.totalUnpaidAmount - agencyCharge - totalOutstationCharges;
-  
-    // Update charges state all at once
-    setCharges((prevState) => ({
-      ...prevState,
-      outStationCharges: outStationCharges,
-      agencyCharges: agencyCommissionCharges,
-      totalOutstationCharges: totalOutstationCharges,
-      grandTotalChargeAmount: grandTotalChargeAmount,
-      netPayableAmount: netPayableAmount
-    }));
-  
-    // Log the grand total charge amount
-    console.log("log total charge amount", grandTotalChargeAmount);
-  }, [outStationCharges, agencyCommissionCharges, Charges.totalAmount]);
-
+ 
 
   const months = [
     "january",
@@ -276,15 +271,85 @@ const DataGrid = () => {
     "july",
     "august",
     "september",
+    "october",
     "november",
     "december",
   ];
 
+  
+
+  const agencies = useAgencyStore((state) => state.agencies); // get agencies from store
+  const fetchAgencies = useAgencyStore((state)=>state.fetchAgencies)
+  const getAllAgenciesByCity = useAgencyStore((state)=>state.getAllAgenciesByCity)
+  const getAgenciesByArea = useAgencyStore((state)=>state.getAgenciesByArea)
   const [years, setYears] = useState([]);
-  const [cities, setCities] = useState([]);
+  
+  
+  
   const dateObj = new Date();
+  
+  const [areas, setAreas] = useState([]);
+
+    const[tripData,setTripData]=useState({})
+
+    const[createdTripId,setCreatedTripId]=useState(null)
+   
+
+  useEffect(() => {
+  setTripData({
+    driver: Charges.driverName,
+    agencyCharges: {
+      chargeAmount: Charges.agencyCharges.chargeAmount,
+      chargeRate: Charges.agencyCharges.chargeRate,
+    },
+  
+    totalAmount: Charges.totalAmount,
+    totalArticels: Charges.totalArticels,
+    totalUnpaidAmount: Charges.totalUnpaidAmount,
+ 
+    bills: tripIds, // <-- will now update
+    agencyName: billsReqBody.agencyName || "N/A",
+    agencyId:billsReqBody.agencyId || "N/A",
+    grandTotalChargeAmount: Charges.grandTotalChargeAmount,
+    netPayableAmount  : Charges.netPayableAmount
+  });
+}, [
+  Charges,
+  
+  tripIds,
+ 
+]);
+
+
+  useEffect(() => {
+  fetchAgencies(); // just trigger fetch on mount
+  }, [fetchAgencies]);
+
+
+ useEffect(() => {
+  if (agencies && Array.isArray(agencies)) {
+    const allAreas = agencies
+      ?.map(agency => agency.serviceAreas || [])
+      ?.flat()
+      ?.filter(Boolean)
+      ?.map(area => area.toLowerCase().trim()); // normalize to lowercase & remove spaces
+
+    const uniqueSortedCities = Array.from(new Set(allAreas)).sort();
+
+    setAreas(uniqueSortedCities);
+    console.log("Normalized, unique, sorted service areas:", uniqueSortedCities);
+  }
+}, [agencies]);
+
 
   const gridRef = useRef(null);
+
+   useEffect(()=>{
+    async function fetchData() {
+      const r = await fetchAgencies()
+    }
+    fetchData()
+   },[])
 
   useEffect(() => {
     fetchBills().then(() => setLoading(false));
@@ -293,96 +358,136 @@ const DataGrid = () => {
  
 
 
+// Utility: normalize area strings for comparisons
+const normalize = (s) => (typeof s === "string" ? s.trim().toLowerCase() : "");
 
-    // Function to calculate grand total amount and total parcels
-    const calculateGrandTotal = (billData) => {
-      const totals = billData.reduce(
-        (acc, bill) => {
-          // Add total amount and total parcels from each bill
-          acc.grandTotalAmount += bill.totalAmount;
-          acc.grandTotalParcels += bill.totalNumOfParcels;
-  
-         
-  
-          return acc;
-        },
-        { grandTotalAmount: 0, grandTotalParcels: 0 }
-      );
-      return totals;
-    };
+ 
+useEffect(() => {
+  if (billsReqBody.agencyName) {
+    // Find the selected agency in the list
+    const selectedAgency = agencies.find(
+      agency => agency.name === billsReqBody.agencyName
+    );
 
-
-
-    // setting unpaid bills list from bills
-    useEffect( ()=>{
-
-      const unpaid = deliveryBillsList?.filter(unpaidBills=>unpaidBills.paymentStatus===false)
-
-       setUnpaidBillsList(unpaid)
-      console.log("unpaid",unpaidBillsList);
-      
-
-    },[bills,deliveryBillsList])
-
-
-    useEffect( ()=>{
-
-      
-      console.log("unpaid",unpaidBillsList);
-      
-
-    },[bills])
-
-
-    
-    
-
-    // setting total amount from deliveryBillsList
-    useEffect(() => {
-
-      const { grandTotalAmount, grandTotalParcels } = calculateGrandTotal(deliveryBillsList);
-     
-      handleOnChangeChargesInput("totalAmount",grandTotalAmount)
-      handleOnChangeChargesInput("totalArticels",grandTotalParcels)
-      console.log(Charges);
-
-      
-       
-    }, [deliveryBillsList,bills]); // ✅ Recalculate total whenever `bills` update
-
-    // setting total unpaid amount 
-    useEffect(() => {
-
-      const { grandTotalAmount, grandTotalParcels } = calculateGrandTotal(unpaidBillsList);
-      console.log("unpaid",grandTotalAmount,grandTotalParcels);
-      
-      handleOnChangeChargesInput("totalUnpaidAmount",grandTotalAmount)
-     
-
-
-
-      console.log(Charges);
-
-      
-       
-    }, [bills,unpaidBillsList],); // ✅ Recalculate total whenever `bills` update
-
-
-  const outStationChargeTableColumns = [
-    {
-      id:"articles",
-      label:"Articels"
-    },
-    {
-      id:"charge",
-      label:"Charge"
-    },
-    {
-      id:"chargeAmount",
-      label:"Charged Amount"
+    if (selectedAgency) {
+      // Extract its service areas
+      const agencyAreas = selectedAgency.serviceAreas || [];
+      setAreas(agencyAreas);
+    } else {
+      setAreas([]); // Clear areas if agency not found
     }
-   
-  ]
+  } else {
+    if (agencies && Array.isArray(agencies)) {
+    const allAreas = agencies
+      ?.map(agency => agency.serviceAreas || [])
+      ?.flat()
+      ?.filter(Boolean)
+      ?.map(area => area.toLowerCase().trim()); // normalize to lowercase & remove spaces
+
+    const uniqueSortedCities = Array.from(new Set(allAreas)).sort();
+
+    setAreas(uniqueSortedCities);
+    console.log("Normalized, unique, sorted service areas:", uniqueSortedCities);
+  }
+  }
+}, [billsReqBody.agencyName, agencies]);
+
+  
+  // 2) Derive filteredAgencies when area selection or agencies change
+ 
+
+const filteredAgencies = useMemo(() => {
+  if (!agencies || agencies.length === 0) return [];
+
+  if (billsReqBody.to) {
+    const target = normalize(billsReqBody.to);
+    return agencies.filter(a =>
+      (a.serviceAreas || []).some(sa => normalize(sa) === target)
+    );
+  }
+
+  // no area selected -> return all agencies
+  return agencies;
+}, [agencies, billsReqBody.to]);
+
+//3) If user changes area, and currently selected agency doesn't serve it -> reset agencyName
+    //  (keeps consistency so two-way filter doesn't conflict)
+
+useEffect(() => {
+  if (!billsReqBody.to || !billsReqBody.agencyName) return;
+
+  const selectedAgency = agencies.find(a => a.name === billsReqBody.agencyName);
+  const target = normalize(billsReqBody.to);
+
+  if (selectedAgency && !(selectedAgency.serviceAreas || []).some(sa => normalize(sa) === target)) {
+    // selected agency does not serve this area -> clear agency selection
+    setBillsReqBody(prev => ({ ...prev, agencyName: "" }));
+  }
+}, [billsReqBody.to, billsReqBody.agencyName, agencies]);
+
+
+
+
+useEffect(() => {
+  if (!deliveryBillsList) return;
+
+  // 1️⃣ Filter unpaid bills
+  const unpaidBills = deliveryBillsList.filter(bill => bill.paymentStatus === false);
+  setUnpaidBillsList(unpaidBills);
+
+  // 2️⃣ Total Articles (from all bills)
+  const totalArticles = deliveryBillsList.reduce(
+    (sum, bill) => sum + (bill.totalNumOfParcels || 0),
+    0
+  );
+
+  // 3️⃣ Total Amount (from all bills)
+  const totalAmount = deliveryBillsList.reduce(
+    (sum, bill) => sum + (bill.totalAmount || 0),
+    0
+  );
+
+  // 4️⃣ Total Unpaid Amount (only from unpaid bills)
+  const totalUnpaidAmount = unpaidBills.reduce(
+    (sum, bill) => sum + (bill.totalAmount || 0),
+    0
+  );
+
+  // 5️⃣ Agency Commission (only on unpaid bills)
+  const commissionChargeAmount = (totalUnpaidAmount * agencyCommissionCharges.chargeRate) / 100;
+
+  // 6️⃣ Net Payable Amount (remaining amount agency needs to pay)
+  const netPayableAmount = totalUnpaidAmount - commissionChargeAmount;
+
+  // 7️⃣ Update both states cleanly
+  setAgencyCommissionCharges(prev => ({
+    ...prev,
+    chargeAmount: commissionChargeAmount,
+  }));
+
+  setCharges(prev => ({
+    ...prev,
+    totalArticels: totalArticles,
+    totalAmount,
+    totalUnpaidAmount,
+    netPayableAmount,
+    agencyCharges: {
+      ...prev.agencyCharges,
+      chargeAmount: commissionChargeAmount,
+    },
+  }));
+
+  console.log("✅ Total unpaid:", totalUnpaidAmount);
+  console.log("✅ Commission:", commissionChargeAmount);
+  console.log("✅ Net payable:", netPayableAmount);
+}, [
+  deliveryBillsList,
+  agencyCommissionCharges.chargeRate,
+]);
+
+    
+
+
 
   const agencyCommissionChargesTableColumns =[
     {
@@ -399,12 +504,59 @@ const DataGrid = () => {
     }
   ]
   
+    const DeliveryStatusRenderer = (props) => {
+  const value = props.value;
+  if (value === true) {
+    return (
+      <span style={{ color: 'green', fontWeight: 'bold', fontSize: '1.2em' }} title="Delivered">✓</span>
+    );
+  } else {
+    return (
+      <span style={{ color: 'red', fontWeight: 'bold', fontSize: '1.2em' }} title="Not Delivered">✗</span>
+    );
+  }
+};
+
+// filteredBills = bills after your filters (fetched/derived elsewhere)
+const displayRows = useMemo(() => {
+  const idSet = new Set(tripIds);
+  return (filteredBills || []).map(bill => ({
+    ...bill,
+    // tick the flag if this bill's _id is in tripIds
+    addedToTripFlag: idSet.has(bill._id),
+  }));
+}, [filteredBills, tripIds]);
+
+useEffect(() => {
+  // Guard clause
+  if (!filteredBills || !deliveryBillsList) return;
+
+  // ✅ Map only once per dependency change
+  const billsWithTripFlags = filteredBills.map(bill => ({
+    ...bill,
+    addedToTripFlag: deliveryBillsList.some(
+      deliveryBill => deliveryBill._id === bill._id
+    ),
+  }));
+
+  // Only update if data actually changed
+  const isSame =
+    JSON.stringify(filteredBills) === JSON.stringify(billsWithTripFlags);
+  if (!isSame) {
+    setFilteredBills(billsWithTripFlags);
+  }
+
+  // ✅ Safe refresh (only if grid is mounted)
+  if (gridRef.current?.api) {
+    gridRef.current.api.refreshCells({ force: true });
+  }
+}, [deliveryBillsList]);
 
   
 
   const colDefs = [
-    { headerName: "ID", field: "id", width: 80, minWidth: 80, maxWidth: 80 },
-    { headerName: "Date", field: "date", width: 100, minWidth: 100 },
+    { headerName: "INV No.", field: "lrNumber", width: 120, minWidth: 120, maxWidth:120 , sortable: true, filter: true },
+    { headerName: "Date", field: "date", width: 110, minWidth: 110 },
     {
       headerName: "To",
       field: "to",
@@ -444,15 +596,14 @@ const DataGrid = () => {
       width: 80,
       minWidth: 80,
     },
+
     {
       headerName: "Delivery",
       field: "deliveryStatus",
-      editable:false,
+      editable: false,
       width: 90,
-      cellEditor: "agCheckboxCellEditor",
-      cellRenderer: "agCheckboxCellRenderer",
-      onCellValueChanged: (params) =>
-        handleStatusChange(params, "deliveryStatus"),
+      cellRenderer: DeliveryStatusRenderer,
+      onCellValueChanged: (params) => handleStatusChange(params, "deliveryStatus"),
     },
     {
       headerName: "Amount",
@@ -475,47 +626,45 @@ const DataGrid = () => {
       onCellValueChanged: (params) =>
         handleStatusChange(params, "paymentStatus"),
     },
-    {
-      headerName: "Add To Trip",
-      field:"addedToTripFlag",
-      editable: (params)=>{
-        if(params.data.deliveryStatus===true){
-          return false
-        }else return true
-      } ,
-      minWidth: 90,
-      width: 120,
-      cellEditor: "agCheckboxCellEditor",
-      cellRenderer: "agCheckboxCellRenderer",
-      onCellValueChanged: (params) =>{
-        // setting bills ids to tripsids, and setting bills data to deliveryBillsList state which are about to deliver.
-        
-        const { data } = params;
-    
-        if (params.newValue) {
-          // When checkbox is checked, add to the arrays
-          setTripIds(prev => [...prev, data.id]);
-          setdeliveryBillsList(prev => [...prev, data]);
-        } else {
-          // When checkbox is unchecked, remove from the arrays
-          setTripIds(prev => prev.filter(id => id !== data.id));
-          setdeliveryBillsList(prev => prev.filter(bill => bill.id !== data.id));
-        }
-        }
-      
-        
-        
-        
-    },
-    {
+ {
+  headerName: "Add To Trip",
+  field: "addedToTripFlag",
+  editable: (params) => !params.data.deliveryStatus,
+  minWidth: 90,
+  width: 120,
+  cellEditor: "agCheckboxCellEditor",
+  cellRenderer: "agCheckboxCellRenderer",
+  onCellValueChanged: (params) => {
+    const { data } = params;
+    const _id = data._id;
+
+    if (params.newValue) {
+      // add id (avoid duplicates)
+      setTripIds(prevIds => prevIds.includes(_id) ? prevIds : [...prevIds, _id]);
+
+      // add full object only if not present
+      setdeliveryBillsList(prev => prev.some(b => b._id === _id) ? prev : [...prev, data]);
+    } else {
+      // remove id and object
+      setTripIds(prev => prev.filter(id => id !== _id));
+      setdeliveryBillsList(prev => prev.filter(b => b._id !== _id));
+    }
+
+    // Optional: safe refresh (only if API exists)
+    if (gridRef.current?.api) {
+      gridRef.current.api.refreshCells({ force: true });
+    }
+  },
+},
+{
       headerName: "View Bill",
       field: "id", // You can use the "id" field for navigation
       cellRenderer: (params) => {
-        const { id } = params.data;
+        const { _id } = params.data;
         // Check if the data is available
-        if (id) {
+        if (_id) {
           return (
-            <Link legacyBehavior href={`/admin/bills/${id}`}>
+            <Link legacyBehavior href={`/admin/bills/${_id}`}>
               <a className="text-blue-500 underline">View Bill</a>
             </Link>
           );
@@ -525,21 +674,80 @@ const DataGrid = () => {
     },
   ];
 
+  const CustomNoRowsOverlay = () => {
+  return (
+    <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+      <h3>No bills found</h3>
+      <p>Try adjusting your filters or add a new bill.</p>
+    </div>
+  );
+};
+  
+
   // sends bills ids to backend(backend changes the bills deliveryStatus to true) and then refetch the current bills to render the changes.
-  const handleSetTrip = ()=>{
-      console.log("delivery list",deliveryBillsList,"trip bills ids",tripIds);
+ const handleSetTrip = async () => {
+  console.log("delivery list", deliveryBillsList, "trip bills ids", tripIds, "tripData", tripData);
+  setOpenChargesModal(!openChargeseModal);
+
+  
+};
+
+  const handlePostTrip = async () => {    
+    try {
+    const result = await createTrip(tripData); // 👈 await here
+    setCreatedTripId(result?._id || null)
       
+    setOpenTripSuccessDialog(true)
+
+    if (result) {
+      // Reset trip data and UI
+      setTripData({});
+      setdeliveryBillsList([]);
+      setOpenChargesModal(false);
+      setOpenPdfModal(false);
+      setPrintBillsFlag(false);
+
+      // ✅ Wait a moment or directly refetch bills
+      await fetchBills(); // make sure this also returns a Promise
+      
+      console.log("Bills refetched after trip creation");
+    } else {
+      console.error("Failed to create trip. Please try again.");
+    }
+  } catch (err) {
+    console.error("Error creating trip:", err);
   }
- 
+  };  
+
+  const handleSuccessDailogClose = () => {
+    setOpenTripSuccessDialog(false)
+  };
+
+  const handlePrintTripSheet=()=>{
+    
+  }
 
 
 
   const handleStatusChange = async (params, field) => {
     const { data, newValue } = params;
-    const id = data.id;
-    await updateBill(id, { [field]: newValue });
+    const id = data.id|| data._id; // Use _id if id is not available
+    // Ensure boolean value is sent
+  let value = newValue;
+  if (field === "paymentStatus") {
+    value = Boolean(newValue);
+  }
+  if(id){
+    console.log("Updating bill with ID:", id, "Field:", field, "Value:", value);
+  }
+  if(!id){
+    console.error("ID is not available in the data object");
+    return;
+  }
+  await updateBill(id, { [field]: value });
+};
     
-  };
+  
 
   // Function to handle row class dynamically based on status
   const getRowClass = (params) => {
@@ -560,19 +768,40 @@ const DataGrid = () => {
     );
   };
 
+  
+
   const handleReqBodyInputChange = (name, value) => {
     setBillsReqBody((prevState) => ({ ...prevState, [name]: value }));
   };
 
+
+
   useEffect(() => {
     const newYears = getYearsFromYearToCurrent(2020);
     setYears(newYears);
-    setBillsReqBody({
-      month: months[dateObj.getMonth()],
-      year: dateObj.getFullYear(),
-      city: "",
-    });
+    
+    handleReqBodyInputChange("month",months[dateObj.getMonth()])
+    handleReqBodyInputChange("year",dateObj.getFullYear())
+    
   }, []);
+
+
+      
+      
+  
+
+  const handleSubmit =async()=>{
+   
+  }
+  
+
+  useEffect(()=>{
+    
+    
+
+  },[])
+
+
 
 //  loading || years.length === 0
 
@@ -607,132 +836,153 @@ const DataGrid = () => {
 
   return (
     <>
-      <div className="  flex justify-start px-4 mt-1  ">
+      <div className="  flex justify-start md:px-2 mt-1  ">
         <form className="flex gap-1  ">
-          <div className="  flex-grow gap-1 md:flex  ">
+          <div className="  flex-grow gap-1 flex scale-75 md:scale-100  ">
             <div>
-              <label
-                htmlFor="small1"
-                className="block  text-sm font-medium text-gray-900 dark:text-white"
-              >
-                Month
-              </label>
-
-              <select
-                id="small1"
+              <FormControl>
+              <InputLabel id="demo-simple-select-label">Month</InputLabel>
+              <Select
+                labelId="demo-simple-select-label"
+                id="demo-simple-select" 
                 defaultValue={months[dateObj.getMonth()]}
+                label="Month"  
                 onChange={(e) => {
-                  handleReqBodyInputChange("month", e.target.value);
+                  handleReqBodyInputChange("month", e.target.value);  
                 }}
-                className="block w-full p-2 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 
-                      focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 
-                      dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
               >
-                {months.map((value, index) => (
-                  <option key={index} value={value}>
+                {months.map((value, index) => (   
+                  <MenuItem key={index} value={value}>
                     {value}{" "}
-                  </option>
-                ))}
-              </select>
-            </div>
+                  </MenuItem>
+                )) 
+              }
+              </Select>
+             </FormControl>
+            </div>  
+
+            
 
             <div>
-              <label
-                htmlFor="small2"
-                className="block  text-sm font-medium text-gray-900 dark:text-white"
-              >
-                Year
-              </label>
+             <FormControl>
+              <InputLabel id="demo-simple-select-label">agency</InputLabel>
+              <Select
+                labelId="demo-simple-select-label"
+                id="demo-simple-select" 
 
-              <select
-                id="small2"
-                defaultValue={years.find(
+                defaultValue={years.find( 
                   (year) => year === dateObj.getFullYear()
                 )}
+                label="Year"  
                 onChange={(e) => {
                   handleReqBodyInputChange("year", e.target.value);
                 }}
-                className="block w-full p-2 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 
-                      focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 
-                      dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
               >
-                {years.map((value, index) => (
-                  <option key={index} value={value}>
+                {years.map((value, index) => (  
+                  <MenuItem key={index} value={value}>
                     {value}{" "}
-                  </option>
-                ))}
-              </select>
+                  </MenuItem>
+                ))  
+              
+                 }
+              </Select>
+             </FormControl>
+
+             
             </div>
 
-            <div>
-              <label
-                htmlFor="small2"
-                className="block  text-sm font-medium text-gray-900 dark:text-white"
+          
+
+            <div  >
+
+              <FormControl>
+              <InputLabel id="demo-simple-select-label">Agency</InputLabel> 
+              <Select 
+                fullWidth
+                labelId="demo-simple-select-label"
+                id="demo-simple-select"
+                value={ billsReqBody.agencyName  }
+                
+                label="Agency"
+                onChange={(e) => {
+                  const selected = filteredAgencies.find(agency => agency.name === e.target.value); 
+                  console.log("selected agent", selected)
+                  setBillsReqBody(prevState => ({
+                    ...prevState,
+                    agencyId : selected ? selected._id : "",
+                    agencyName: selected  ? selected.name : ""
+                  })); 
+                    setTripData(prevState => ({
+                    ...prevState,
+                    agencyId : selected ? selected._id : "",
+                    agencyName: selected  ? selected.name : ""
+                  })); 
+                 
+                }}
               >
-                To
-              </label>
-              <select
-                id="small2"
-                className="block w-full p-2 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 
-                      focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 
-                      dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-              >
-                <option defaultValue={true}>Choose a city</option>
-                <option value="US">United States</option>
-                <option value="CA">Canada</option>
-                <option value="FR">France</option>
-                <option value="DE">Germany</option>
-              </select>
+                <MenuItem value={""}>Select an agency</MenuItem>  
+                {filteredAgencies?.map((value,index)=>(
+                  <MenuItem value={value.name} key={index}  >{value.name}</MenuItem>
+                ))  
+                }
+              </Select>
+              </FormControl>   
+              
+            
             </div>
+
+            {/* for optional filter have to render conditionally */}
+
+            { filterByAreaCheckedState && (
+
+            <div  className="flex-grow  ">
+              <FormControl fullWidth>
+
+              <InputLabel id="demo-simple-select-label">Destination Area</InputLabel>
+              <Select
+                labelId="demo-simple-select-label"
+                id="demo-simple-select" 
+                value={billsReqBody.to}
+                label="Destination Area"
+                onChange={(e)=>{handleReqBodyInputChange("to",e.target.value)   
+                  }}  
+              >
+                <MenuItem value={""}>Select an area</MenuItem>  
+                  {areas.map((value,index)=>( 
+                    <MenuItem value={value} key={index}  >{value}</MenuItem>
+                  ))} 
+              </Select>
+
+              </FormControl>
+
+              
+            </div>
+            )}
 
                   
             <div className="flex justify-center items-end mt-3 ">
               <button
                 type="button"
-                onClick={()=>{handleReq;console.log("charges",Charges,"dleivery bills",deliveryBillsList,"is mobile",isMobile)}}
+                onClick={()=>{handleReq,handleSubmit();console.log("charges",Charges,"dleivery bills",deliveryBillsList,"is mobile",isMobile,"req body",billsReqBody)}}
                 className=" flex justify-center items-center my-1  h-10  text-white   bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm p-2.5    dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
               >
-                <span> Search</span>
+                <span>Get Bills</span>
               </button>
             </div>
 
-            <div className="flex justify-center items-end ">
-              <button
-                type="button"
-                onClick={() => {
-                  console.log(deliveryBillsList===null?true:false)
-                  
-                   setOpenPdfModal( ()=>{
-                     if(deliveryBillsList.length==0){
-                           return false,alert("First add bills to trip to print bills.")
-                     }else return true
-                   } );
-                 
-                }}
-                className=" flex justify-center my-1 items-center   h-10  text-white   bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm p-2.5    dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-              >
-                <IoPrint size={25} /> <span> Print</span>
-              </button>
-            </div>
-
-            <div className="flex gap-1 justify-center  ">
-              <div className="flex justify-end items-end  ">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenChargesModal(()=>{
-                      if(deliveryBillsList.length==0){
-                        return false,alert("First add bills to trip to add bill charges.")
-                        }else return true
-                    });
-                  }}
-                  className=" flex justify-center items-center my-1  h-10  text-white   bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm p-2.5    dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-                >
-                  <span>Charges</span>
-                </button>
-              </div>
             
-            </div>
+
+       <div className="flex justify-center items-end  ">
+          <div className="flex items-center mb-4 ml-2 " >
+           <input id="default-checkbox" checked={!billsReqBody.deliveryStatus} onChange={()=>{handleReqBodyInputChange("deliveryStatus",!billsReqBody.deliveryStatus)}} type="checkbox" value="" className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"/>
+           <label  className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">undelivered</label>
+          </div>
+           <div className="flex items-center mb-4 ml-2 " >
+           <input id="default-checkbox" checked={filterByAreaCheckedState} onChange={()=>{setFilterByAreaCheckedState(!filterByAreaCheckedState)}}  type="checkbox" value="" className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"/>
+           <label  className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">filter by destination</label>
+          </div>
+        </div>
+
           </div>
         </form>
       </div>
@@ -750,11 +1000,11 @@ const DataGrid = () => {
       >
         <AgGridReact
           ref={gridRef}
-          rowData={bills}
+          rowData={displayRows}
           columnDefs={colDefs}
           pagination={true}
           paginationPageSize={20}
-          
+          noRowsOverlayComponent={CustomNoRowsOverlay}
           getRowClass={getRowClass}
         />
       </div>
@@ -767,36 +1017,9 @@ const DataGrid = () => {
       <div className=" md:flex  " >  
         
       <div className="p-4 " >
-        <h1 className="font-mono text-center font-extrabold text-2xl" >OutStation Delivery Charges</h1>
-      <Table  >
-                        <TableHeader >
-                          <TableRow>
-                       
-                         <TableHead>Articels</TableHead>
-                          <TableHead>Charge</TableHead>
-                          <TableHead>Charged Amount</TableHead>
-                          </TableRow>
-
-                      </TableHeader>
-
-                      <TableBody>
-
-                      {outStationCharges.map((item,index)=>(
-                        <TableRow key={index}  >
-                        <TableCell className="text-center" key={`${index}-articels`} >{item.articles} </TableCell>
-                        <TableCell className="text-center" key={`${index}-charge`} >₹{item.charge} </TableCell>
-                        <TableCell className="text-center" key={`${index}-chargedAmount`} >₹{item.chargeAmount} </TableCell>
-                        </TableRow>
-                        
-                      ))}
-
-                    
-                      </TableBody>
-                     
-                      
-
-        </Table>
-        <div className="flex justify-end p-5 font-mono font-bold " >Total:₹{Charges.totalOutstationCharges}</div>
+        
+     
+   
       </div>
       <div className="p-4" >
         <h1 className="font-mono text-center font-extrabold text-2xl" >Agency Commision Charges</h1>
@@ -825,7 +1048,6 @@ const DataGrid = () => {
 
         </Table>
         <div className="flex justify-end p-5 font-mono font-bold " >Total:₹{agencyCommissionCharges.chargeAmount}</div>
-        <div className="flex justify-end p-5 font-mono font-bold " >Grand Total:₹{Charges.totalOutstationCharges} + ₹{agencyCommissionCharges.chargeAmount} = ₹{Charges.totalOutstationCharges+agencyCommissionCharges.chargeAmount}</div>
 
       </div>
 
@@ -852,137 +1074,38 @@ const DataGrid = () => {
          </div>
 
                 {/*print bills list modals are here  */}
-       <Modal
-        className="w-full h-full"
-        show={openPdfModal}
-        onClose={() => setOpenPdfModal(false)}
-      >
-        <Modal.Header>Print Bills List</Modal.Header>
-        <Modal.Body>
-          
-          <PDFBillListPage  BillListData={deliveryBillsList} charges={PDFBillListPageData}   />
-          
-        </Modal.Body>
-        <Modal.Footer>
-          <Button color="gray" onClick={() => {console.log(Charges,"unapid",); }}>
-            Close
-          </Button>
-          <Button color="gray" onClick={()=>{setPrintBillsFlag(true)}}   >
-            Download
-          </Button>
-          
-          
-        </Modal.Footer>
-      </Modal>  
-
-{/* {openPdfModal&&<div><PDFBillListPage BillListData={deliveryBillsList} charges={PDFBillListPageData}  /></div>}  */}
+    
 
 
-      <Modal
-        show={openChargeseModal}
+
+      <Dialog
+        open={openChargeseModal}
         onClose={() => setOpenChargesModal(false)}
       >
-        <Modal.Header  >Charges</Modal.Header>
-        <Modal.Body>
+        <DialogTitle  >Charges</DialogTitle>
+        <DialogContent>
           <div>
+            
+         
             <h1 className="font-semibold text-xl" >Add Driver Name</h1>
             <div>
                  
-                 <TextInput
-                   color="blue"
+                 <TextField
+                   
                  
                   
-                   sizing="sm"
+                    fullWidth
+                    label = "Driver's Name"
                    value={Charges.driverName}
                    onChange={(e) => handleOnChangeChargesInput("driverName",e.target.value)}
                    placeholder="Enter Driver's Name Here"
                  />
-               </div>
+            </div>
 
-            <h1 className="font-semibold text-xl" >Out Station Delivery Charges</h1>
-
-
-            <div >
-            {outStationCharges.map((data,index)=>(
-               <div key={index} className="flex justify-start items-start gap-1">
-               <div>
-                 <Label htmlFor="" className="text-xs lg:text-sm" value="Articles" />
-                 <TextInput
-                   color="blue"
-                   type="number"
-                   min={1}
-                   sizing="sm"
-                   value={outStationCharges[index].articles}
-                   onChange={(e) => handleOnChangeOutstationCharges(index, "articles", e.target.value)}
-                   placeholder="Total no.of Articles"
-                 />
-               </div>
-
-               <div>
-                 <Label htmlFor="" className="text-xs lg:text-sm" value="Charge" />
-                 <TextInput
-                   color="blue"
-                   type="number"
-                   min={1}
-                   sizing="sm"
-                   value={outStationCharges[index].charge}
-                   onChange={(e) => handleOnChangeOutstationCharges(index, "charge", e.target.value)}
-                   placeholder="Charge per article"
-                 />
-               </div>
-
-               <div className="flex gap-1 mt-5">
-                 <button
-                   className={`bg-blue-700 hover:bg-blue-800 text-white font-bold py-1 px-2 border rounded ${data.addedFlag ? "cursor-not-allowed opacity-45" : ""}`}
-                   onClick={() => handleAddOutstationCharge(index)}
-                 >
-                   {data.addedFlag ? "Added" : "Add"}
-                 </button>
-
-                 <button
-                   disabled={!data.addedFlag}
-                   className={`bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 border rounded ${!data.addedFlag ? "cursor-not-allowed opacity-45" : ""}`}
-                   onClick={() => handleOutstationChargesRemoveField(index)}
-                 >
-                   Remove
-                 </button>
-
-                 {index === outStationCharges.length - 1 && (
-                   <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 border rounded" onClick={handleAddOutstationField}>
-                     +
-                   </button>
-                 )}
-
-                 {index > 0 && (
-                   <button className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 border rounded" onClick={() => handleOutstationChargesRemoveField(index)}>
-                     -
-                   </button>
-                 )}
-               </div>
-             </div>
-            ))}
-               <div className="flex gap-2  my-2">
-                <p className="border-r-2 px-1">Total articles: {outStationCharges.reduce((acc, charge) => acc + Number(charge.articles), 0)}</p>
            
-                <p className="border-r-2 px-1">
-                  Total charge amount: ₹{outStationCharges.reduce((acc, charge) => acc + charge.chargeAmount, 0)}
-                </p>
-              </div>
-            
-          
-
-
 
 
                
-             
-             
-            
-
-
-
-
-            </div>       
           </div>
 
 
@@ -995,37 +1118,29 @@ const DataGrid = () => {
                   {/* agency commission */}
 
           <div>
-            <h1 className="font-semibold text-xl" >Agency Comission</h1>
+            <h1 className="font-semibold text-xl py-4" >Agency Comission</h1>
             <div className="flex justify-start items-start gap-1 ">
               <div>
-                <Label
-                  htmlFor={``}
-                  className=" text-xs lg:text-sm"
-                  value="Total Amount (in rupees) "
-                />
-                <TextInput
-                  color="blue"
-                  id={``}
+                
+                <TextField
+                 
                   type="number"
                   min={1}
-                  sizing="sm"
+                  
+                  label="Total Amount"
                   value={Charges.totalAmount}
                   placeholder="Total Amount "
                   readOnly
                 />
               </div>
               <div>
-                <Label
-                  htmlFor={``}
-                  className=" text-xs lg:text-sm"
-                  value="Charge (Default 10% of total amount) "
-                />
-                <TextInput
-                  color="blue"
-                  id={``}
+              
+                <TextField
+                  label="Charge Rate (%)"
+                  
                   type="number"
                   min={1}
-                  sizing="sm"
+                  
                   placeholder="Charge percent    "
                   value={agencyCommissionCharges.chargeRate}
                   onChange={(e)=>{handleOnChangeAgencyCommisionCharges("chargeRate",e.target.value),console.log(agencyCommissionCharges);
@@ -1080,21 +1195,87 @@ const DataGrid = () => {
          
 
 
-        </Modal.Body>
-        <Modal.Footer>
-          <Button color="blue" onClick={()=>{ setPDFBillListPageData(Charges) }  } >Apply</Button>
+        </DialogContent>
+        <DialogActions>
+          <Button color="blue" onClick={handlePostTrip}  >Add Trip</Button>
           <Button color="gray" onClick={() => setOpenChargesModal(false)}>
             Close
           </Button>
-        </Modal.Footer>
-      </Modal>
+        </DialogActions>
+      </Dialog>
+
+
+
+
+       <Dialog open={openTripSuccessDialog} onClose={handleSuccessDailogClose}>
+              <DialogTitle>
+                {tripCreateStatus === "loading"
+                  ? "Creating Bill..."
+                  : tripCreateStatus === "success"
+                  ? "Bill Created Successfully!"
+                  : tripCreateStatus === "error"
+                  ? "Failed to Create Bill"
+                  : ""}
+              </DialogTitle>
+      
+              <DialogContent>
+                {tripCreateStatus === "loading" && (
+                  <>
+                    <DialogContentText>
+                      Please wait while we create your bill...
+                    </DialogContentText>
+                    <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+                      <CircularProgress />
+                    </Box>
+                  </>
+                )}
+      
+                {tripCreateStatus === "success" && (
+                  <>
+                    <DialogContentText>
+                      Your bill has been successfully created!
+                      with Trip ID: {createdTripId}
+                    </DialogContentText>
+                    <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+                      <Lottie
+                        animationData={succesTickLottie}
+                        loop={true}
+                        className="flex justify-center items-center w-60 h-auto lg:w-72 lg:h-auto "
+                        alt="grow"
+                      />
+                    </Box>
+                  </>
+                )}
+      
+                {tripCreateStatus === "error" && (
+                  <DialogContentText color="error">
+                    Something went wrong. Please try again later.
+                  </DialogContentText>
+                )}
+              </DialogContent>
+      
+              <DialogActions>
+                {tripCreateStatus === "success" && (
+                  <a
+                  href={`/admin/tripsheets/${createdTripId}/pdf-preview`}
+                  className="bg-blue-600 text-white px-4 py-2 rounded mb-4" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  
+                  >Print TripSheet</a>
+                )}
+                <Button onClick={handleSuccessDailogClose} autoFocus>
+                  Cancel
+                </Button>
+              </DialogActions>
+            </Dialog>
 
 
      {
       true &&
       <div>
-      <div>
-        <button onClick={handlePrintPdfHtml2Canvas} >print</button>
+      <div className="flex justify-end mx-2  " >
+        <button onClick={handlePrintPdfHtml2Canvas} className="  p-1 px-4 rounded-md text-xl   bg-gradient-to-b from-red-500 to-red-600 text-white focus:ring-2 focus:ring-red-400 hover:shadow-xl transition duration-200     " >Print</button>
       </div>
       <div id="pdfContent" ref={pdfComonentRef} className=" p-1 " >
         
@@ -1132,10 +1313,10 @@ const DataGrid = () => {
        
                </div>
                  <div className='bg-black w-full h-[2px] ' ></div>
-                 <div className='flex justify-between  ' > 
+                 <div className='flex justify-between mb-2  ' > 
                      <div className='flex gap-2' >
                       {/* not clear about agency where.. still has some work to do  */}
-                     <div>Agency name: </div>
+                      <div>Agency:{billsReqBody.agencyName} </div>
                      <div>Driver's name:{Charges.driverName} </div>
                      </div>
                      <div>Date:{dateObj.toLocaleDateString("hi-IN")} </div>
@@ -1190,10 +1371,7 @@ const DataGrid = () => {
                           <TableCell >(-) ₹{Charges.agencyCharges.chargeAmount} </TableCell>                        
                         </TableRow>
                         
-                        <TableRow>
-                        <TableCell colSpan={6} >Out of station charges</TableCell>                           
-                          <TableCell >(-) ₹{Charges.totalOutstationCharges} </TableCell>                        
-                        </TableRow>
+                       
                         <TableRow>
                         <TableCell colSpan={6} >Total Payable Amount</TableCell>                           
                           <TableCell >₹{Charges.netPayableAmount}/- </TableCell>                        
@@ -1203,37 +1381,9 @@ const DataGrid = () => {
                      
               </div>
               <hr />
-              <div className="flex justify-between mt-16  " >
-                <div  >
-                  <h1 className="text-center font-bold ">Out of station delivery charges</h1>
-                  <div className="border-gray-300" >
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                      <TableHead> Articels </TableHead>
-                      <TableHead>Charge Rate</TableHead>
-                      <TableHead>Charged Amount</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody className='font-Courier_Prime' >
-                      {outStationCharges.map((value,index)=>(
-                        <TableRow key={index} >
-                           <TableCell>{value.articles}</TableCell>
-                           <TableCell>₹{value.charge} </TableCell>
-                           <TableCell>₹{value.chargeAmount} </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                    <TableFooter className='font-Courier_Prime' >
-        <TableRow>
-          <TableCell colSpan={2}>Total Charge</TableCell>
-          <TableCell >₹{Charges.totalOutstationCharges} </TableCell>
-        </TableRow>
-      </TableFooter>
-                  </Table>
-                  </div>
+              <div className="flex justify-center md:justify-between gap-20 md:gap-0   mt-16 scale-50 md:scale-100  " >
+              
 
-                </div>
                 <div  >
                   <h1 className="text-center font-bold " >Agency Commision Charges</h1>
                 <Table>
@@ -1247,7 +1397,7 @@ const DataGrid = () => {
                     <TableBody className='font-Courier_Prime' >
                      
                         <TableRow  >
-                           <TableCell>₹{Charges.totalAmount}</TableCell>
+                           <TableCell>₹{Charges.totalUnpaidAmount}</TableCell>
                            <TableCell>{Charges.agencyCharges.chargeRate}% </TableCell>
                            <TableCell>₹{Charges.agencyCharges.chargeAmount} </TableCell>
                         </TableRow>

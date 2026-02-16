@@ -28,6 +28,6 @@
 
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/app/admin/layout.js", "src/components/AgencyDeleteModal.jsx", "src/components/AgencyDeleteModal.jsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/app/admin/layout.js", "src/components/AgencyDeleteModal.jsx", "src/components/AgencyDeleteModal.jsx", "src/app/admin/trips/page.jsx", "src/store/agencyStore.js", "lib/authFetch.js", "lib/auth.js"],
   "exclude": ["node_modules"]
 }

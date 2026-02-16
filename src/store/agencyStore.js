@@ -1,62 +1,92 @@
-
 import { create } from "zustand";
+import { authFetch } from "../../lib/authFetch"; // adjust if your alias is different
 
-const agencyURL = "http://192.168.237.109:4000/agencies";
+const agencyURL = "/api/agencies";
 
-export const useAgencyStore = create((set,get) => ({
+export const useAgencyStore = create((set, get) => ({
   agencies: [],
-  
-  fetchAgencies: async () => {
+
+    fetchAgencies: async () => {
     try {
-      const response = await fetch(agencyURL);
-      const data = await response.json();
+      const data = await authFetch(agencyURL); // ✅ now auto-sends cookie
       set({ agencies: data });
-      
+      console.log("Agencies fetched:", data);
     } catch (error) {
       console.error("Error fetching Agency:", error);
     }
   },
+
   deleteAgencyById: async (id) => {
     try {
-      await fetch(`${agencyURL}${id}`, { method: "DELETE" });
+      await authFetch(`${agencyURL}/${id}`, { method: "DELETE" });
       set((state) => ({
-        agencies: state.agencies.filter((agency) => agency.id !== id),
+        agencies: state.agencies.filter((a) => a._id !== id),
       }));
     } catch (error) {
-      console.error("Error deleting Agency:", error);
+      console.error("Error deleting agency:", error);
     }
   },
+
+  createAgency: async (data) => {
+    try {
+      await authFetch(agencyURL, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    } catch (error) {
+      console.error("Error creating new agency:", error);
+    }
+  },
+
   updateAgency: async (id, updatedData) => {
     try {
-      const response = await fetch(`${agencyURL}${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+      await authFetch(`${agencyURL}/${id}`, {
+        method: "PATCH",
         body: JSON.stringify(updatedData),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to update agency");
-      }
-
       set((state) => ({
-        agencies: state.agencies.map((agency) =>
-          agency.id === id ? { ...agency, ...updatedData } : agency
+        agencies: state.agencies.map((a) =>
+          a._id === id ? { ...a, ...updatedData } : a
         ),
       }));
     } catch (error) {
       console.error("Error updating Agency:", error);
     }
   },
-  getAgencyNameByCity:(city)=>{
-       const {agencies}=get()
-       
 
-        return get().agencies
-                .filter((agency)=>agency.city===city)
-                .map((agency)=>agency.name)
-  }
+  // ✅ Get single/multiple agencies by city
+  getAgencyByCity: (city) => {
+    const target = city?.trim().toLowerCase();
+    const { agencies } = get();
+    const matches = agencies.filter(
+      (a) => a.city?.trim().toLowerCase() === target
+    );
+    console.log("🔍 Agency by city:", target, matches);
+    return matches;
+  },
+
+  getAllAgenciesByCity: (city) => {
+    const target = city?.trim().toLowerCase();
+    const { agencies } = get();
+    return agencies.filter(
+      (a) => a.city?.trim().toLowerCase() === target
+    );
+  },
+
+  // ✅ Filter by service area
+  getAgenciesByArea: (area) => {
+    const agencies = get().agencies;
+    if (!area) return [];
+    const lowerArea = area.toLowerCase();
+    return agencies.filter(
+      (a) =>
+        Array.isArray(a.serviceAreas) &&
+        a.serviceAreas.some((sa) => sa.toLowerCase() === lowerArea)
+    );
+  },
 }));
 
+// ✅ Delete modal state
 export const useAgencyDeleteModal = create((set) => ({
   isOpen: false,
   agencyId: null,
@@ -64,9 +94,10 @@ export const useAgencyDeleteModal = create((set) => ({
   closeModal: () => set({ isOpen: false, agencyId: null }),
 }));
 
+// ✅ Edit modal state
 export const useAgencyEditModal = create((set) => ({
-    isOpen: false,
-    agencyData: null,
-    openModal: (agency) => set({ isOpen: true, agencyData: agency },console.log(agency)),
-    closeModal: () => set({ isOpen: false, agencyData: null }),
-  }));
+  isOpen: false,
+  agencyData: null,
+  openModal: (agency) => set({ isOpen: true, agencyData: agency }),
+  closeModal: () => set({ isOpen: false, agencyData: null }),
+}));

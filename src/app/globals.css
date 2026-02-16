@@ -13,12 +13,40 @@ body {
   height: 297mm;
   padding: 20mm;
   background: white;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  
 }
 
 @media print {
   .a4-page {
     box-shadow: none;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 5px;
+  }
+
+  .print-a4-container {
+    width: 210mm;
+    height: 297mm;
+  }
+
+  .screen-only {
+    display: none !important;
+  }
+
+  .print\:block {
+    display: block !important;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+
+  .print\:h-half {
+    height: 50% !important;
   }
 }
 
