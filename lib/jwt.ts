@@ -1,32 +1,33 @@
+// lib/jwt.ts
 import { SignJWT, jwtVerify, JWTPayload } from "jose";
-
-/* ================= TYPES ================= */
 
 export type UserRole = "super_admin" | "admin" | "agent";
 
 export interface AppJwtPayload {
   id: string;
   role: UserRole;
+  branchId?: string; // 👈 optional (super_admin may not have one)
   exp: number;
 }
-
-/* ================= SECRET ================= */
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
 
 /* ================= TYPE GUARD ================= */
 
-function isAppJwtPayload(payload: JWTPayload): payload is JWTPayload & AppJwtPayload {
+function isAppJwtPayload(
+  payload: JWTPayload
+): payload is JWTPayload & AppJwtPayload {
   return (
     typeof payload.id === "string" &&
     (payload.role === "super_admin" ||
       payload.role === "admin" ||
       payload.role === "agent") &&
-    typeof payload.exp === "number"
+    typeof payload.exp === "number" &&
+    (payload.branchId === undefined || typeof payload.branchId === "string")
   );
 }
 
-/* ================= SIGN TOKEN ================= */
+/* ================= SIGN ================= */
 
 export async function signToken(
   payload: Omit<AppJwtPayload, "exp">
@@ -36,19 +37,14 @@ export async function signToken(
     .setExpirationTime("7d")
     .sign(secret);
 }
-
-/* ================= VERIFY TOKEN ================= */
+/* ================= VERIFY ================= */
 
 export async function verifyToken(token: string): Promise<AppJwtPayload> {
   const { payload } = await jwtVerify(token, secret);
 
   if (!isAppJwtPayload(payload)) {
-    throw new Error("Invalid token payload");
+    throw new Error("Invalid token");
   }
 
-  return {
-    id: payload.id,
-    role: payload.role,
-    exp: payload.exp,
-  };
+  return payload;
 }

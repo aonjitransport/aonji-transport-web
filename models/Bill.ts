@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { Counter } from "./Counter";
+import { Maname } from "next/font/google";
 
 const ConsigneeSchema = new mongoose.Schema({
   name: String,
@@ -15,12 +16,7 @@ const BillSchema = new mongoose.Schema(
     lrNumber: { type: String, unique: true }, // formatted ID (e.g. B10250001)
     date: String,
     to: String,
-    agency: {
-      _id: mongoose.Schema.Types.ObjectId,
-      name: String,
-      phone: Number,
-      address: String,
-    },
+ 
     totalNumOfParcels: Number,
     totalAmount: Number,
     paymentStatus: Boolean,
@@ -35,12 +31,33 @@ const BillSchema = new mongoose.Schema(
       address: String,
     },
     consignees: [ConsigneeSchema],
-    administrator: { type: String, required: true },
+   
+    fromBranch: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Branch",
+    required: true,
+  },
+
+  toBranch: {
+    type:  mongoose.Schema.Types.ObjectId,
+    ref: "Branch",
+    required: true,
+  },
+
+  createdBy: {
+    type:  mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
+
+ 
+
+
+
   },
   { timestamps: true }
 );
 
-// ✅ Pre-save hook for formatted bill number
+// ✅ Pre-save hook for formatted LR number (SAFE + ATOMIC)
 BillSchema.pre("save", async function (next) {
   if (!this.isNew) return next();
 
@@ -48,24 +65,36 @@ BillSchema.pre("save", async function (next) {
 
   const now = new Date();
   const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const yy = String(now.getFullYear()).slice(-2);
-  const counterId = `lr-${yy}${mm}`; // e.g. lr-2510
+  const yyyy = now.getFullYear();
+  const yy = String(yyyy).slice(-2); // last 2 digits
+
+  // 🔑 Unified counter key (monthly LR reset)
+  const counterKey = `lr-${yyyy}-${mm}`; // e.g. lr-2026-01
 
   const counter = await Counter.findOneAndUpdate(
-    { id: counterId },
-    { $inc: { seq: 1 } },
-    { new: true, upsert: true }
+    { key: counterKey },
+    {
+      $inc: { seq: 1 },
+      $setOnInsert: { key: counterKey },
+    },
+    {
+      new: true,
+      upsert: true,
+    }
   );
 
   console.log("✅ [DEBUG] Counter result:", counter);
 
-  const seq = String(counter.seq).padStart(4, "0"); // e.g. 0001
+  const seq = String(counter.seq).padStart(4, "0");
+
+  // 📄 Final LR number format
   this.lrNumber = `LR${mm}${yy}${seq}`;
 
   console.log("✅ [DEBUG] Generated lrNumber:", this.lrNumber);
 
   next();
 });
+
 
 // ✅ Use model caching correctly (prevents hook loss)
 export const Bill =

@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -20,14 +24,37 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@components/*":["./src/components/*"],
-      "@lib/*":["./src/lib/*"],
-      "@store/*":["./src/store/*"]
-      
-
+      "@/*": [
+        "./src/*"
+      ],
+      "@components/*": [
+        "./src/components/*"
+      ],
+      "@lib/*": [
+        "./src/lib/*"
+      ],
+      "@store/*": [
+        "./src/store/*"
+      ]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/app/admin/layout.js", "src/components/AgencyDeleteModal.jsx", "src/components/AgencyDeleteModal.jsx", "src/app/admin/trips/page.jsx", "src/store/agencyStore.js", "lib/authFetch.js", "lib/auth.js"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "src/app/admin/layout.js",
+    "src/components/AgencyDeleteModal.jsx",
+    "src/components/AgencyDeleteModal.jsx",
+    "src/app/admin/trips/page.jsx",
+    "src/store/agencyStore.js",
+    "lib/authFetch.js",
+    "lib/auth.js",
+    "src/store/branchStore.js",
+    ".next/dev/types/**/*.ts",
+    "next.config.js"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

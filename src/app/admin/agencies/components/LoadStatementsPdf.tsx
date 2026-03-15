@@ -32,7 +32,7 @@ interface trips{
 interface loadStatementData{
   loadStatementId: string;
   trips: trips[];
-  agency:{
+  branch:{
     city:string;
     name:string;
     
@@ -118,6 +118,8 @@ const PDFBillListDocument: React.FC<loadStatementDataProps> = ({ loadStatementDa
   
   const monthNumber = loadStatementData?.month || 0;
   const monthName = getMonthName(monthNumber);  
+  const dueMonthNumber = monthNumber === 12 ? 1 : monthNumber + 1;
+  const dueMonthName = getMonthName(dueMonthNumber);
 
   
 
@@ -155,7 +157,7 @@ const PDFBillListDocument: React.FC<loadStatementDataProps> = ({ loadStatementDa
           </Text>
           
           <Text style={{textAlign:"center",alignSelf:"center"}} >
-           Agent : {loadStatementData?.agency?.name} - {loadStatementData?.agency?.city}
+           Agent : {loadStatementData?.branch?.name} - {loadStatementData?.branch?.city}
           </Text>
         </View>
 
@@ -269,7 +271,7 @@ const PDFBillListDocument: React.FC<loadStatementDataProps> = ({ loadStatementDa
       fontFamily: "Helvetica-Oblique",
     }}
   >
-    *Please complete the statement due before the 5th of {monthName} {loadStatementData?.year}.  
+    *Please complete the statement due before the 5th of {dueMonthName} {loadStatementData?.year}.  
     If already paid, kindly contact the administration office.*
   </Text>
 )}

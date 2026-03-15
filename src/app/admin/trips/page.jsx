@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef, useEffect,useState } from "react";
+import React, { useRef, useEffect,useState, use } from "react";
 import { AgGridReact } from "ag-grid-react";
 
 import PDFBillListDocument from "../bills/components/PDFDocument/PDFBillListDocument";
@@ -10,8 +10,10 @@ import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
 import Select from "@mui/material/Select";
-import { useAgencyStore } from "../../../store/agencyStore";
+
 import useTripsStore from "../../../store/tripsStore";
+import useBranchStore from "@/store/branchStore";
+import { useAuthStore } from "../../../store/useAuthStore";
 
 import { pdf } from "@react-pdf/renderer";
 import {
@@ -38,11 +40,18 @@ function getYearsFromYearToCurrent(startYear) {
 
 const Page = () => {
   const gridRef = useRef(null);
-  const agencies = useAgencyStore((state) => state.agencies);
-  const fetchAgencies = useAgencyStore((state) => state.fetchAgencies);
-  
+ 
+  const branches = useBranchStore((state) => state.branches);
+  const fetchBranches = useBranchStore((state) => state.fetchBranches);
   const {trips , fetchTrips} = useTripsStore();
-
+    const user = useAuthStore((state) => state.user);
+      const fetchMe = useAuthStore((state) => state.fetchMe);
+      const hasHydrated = useAuthStore((state) => state.hasHydrated);
+      useEffect(() => {
+      if (hasHydrated && !user) {
+        fetchMe();
+      }
+      }, [hasHydrated, user, fetchMe]);
   
  
   const [years, setYears] = React.useState([])
@@ -51,7 +60,7 @@ const Page = () => {
   const [reqBody, setReqBody] = React.useState({
     month: "",
     year: new Date().getFullYear(), // ✅ default current year
-    agency: "",
+    branch: "",
   });
 
   const handleReqBodyInputChange = (field, value) => {
@@ -62,6 +71,10 @@ const Page = () => {
 
     console.log("handleReqBodyInputChange:", field, value);
   };
+
+  useEffect(() => {
+    fetchBranches();
+  }, [fetchBranches, ]);
 
 const downloadTripPDF = async (trip) => {
   const blob = await pdf(
@@ -99,7 +112,7 @@ const downloadTripPDF = async (trip) => {
         return date.toLocaleDateString("en-GB");
       },
       sortable: true, filter: true },  
-    { headerName: "Agency", field: "agencyName", sortable: true, filter: true },
+    { headerName: "Branch", field: "destinationBranch.name", sortable: true, filter: true },
    
     { headerName: "Qty", field: "totalArticels", sortable: true, filter: true },
     { headerName: "Amount", field: "totalAmount", sortable: true, filter: true },
@@ -134,10 +147,6 @@ const downloadTripPDF = async (trip) => {
 };
   
 
-  useEffect(() => {
-    fetchAgencies();
-    
-  }, [fetchAgencies]);
 
   
 
@@ -150,14 +159,31 @@ const downloadTripPDF = async (trip) => {
     handleReqBodyInputChange("year", dateObj.getFullYear());
   }, []);
 
- useEffect(() => {
-  if (agencies.length > 0 && !reqBody.agency) {
+useEffect(() => {
+  if (!user || branches.length === 0) return;
+
+  if (user.role === "agent") {
     setReqBody((prev) => ({
       ...prev,
-      agency: agencies[0]._id, // set first agency as default
+      branch: user.branchId
     }));
   }
-}, [agencies]);
+
+  if (user.role === "admin") {
+    setReqBody((prev) => ({
+      ...prev,
+      branch: user.branchId
+    }));
+  }
+
+  if (user.role === "super_admin") {
+    setReqBody((prev) => ({
+      ...prev,
+      branch: ""
+    }));
+  }
+
+}, [user, branches]);
 
   // Month/year defaults
 useEffect(() => {
@@ -171,15 +197,15 @@ useEffect(() => {
 }, []);
 
   console.log("reqBody:", reqBody);
-  console.log("agencies:", agencies);
+  
   console.log("tripsStore:", trips);
 
   // ✅ Fetch trips only when all required filters are ready
 useEffect(() => {
-  if (reqBody.month && reqBody.year && reqBody.agency) {
+  if (reqBody.month && reqBody.year && reqBody.branch) {
     fetchTrips(reqBody);
   }
-}, [reqBody.month, reqBody.year, reqBody.agency]);
+}, [reqBody.month, reqBody.year, reqBody.branch]);
 
   
 
@@ -205,7 +231,7 @@ useEffect(() => {
 
         <FormControl sx={{ minWidth: 120 }}>
           <Select
-            labelId="year-label"
+            labelId="month-label"
             value={reqBody.month} // ✅ always controlled
             onChange={(e) =>
               handleReqBodyInputChange("month", String(e.target.value))
@@ -221,18 +247,27 @@ useEffect(() => {
 
         {/* ✅ Controlled Autocomplete */}
         <Autocomplete
-          disablePortal
-          options={agencies} // full agency objects
-          getOptionLabel={(option) => option.name} // display name
-          sx={{ width: 300 }}
-          value={agencies.find((a) => a._id === reqBody.agency) || null} // selected agency
-          onChange={(event, value) =>
-            handleReqBodyInputChange("agency", value?._id || "")
-          }
-          renderInput={(params) => (
-            <TextField {...params} label="Select an agent" />
-          )}
-        />
+  disablePortal
+  options={
+    user?.role === "super_admin"
+      ? [{ _id: "", name: "All Branches" }, ...branches]
+      : branches
+  }
+  getOptionLabel={(option) => option.name}
+  sx={{ width: 300 }}
+  value={
+    user?.role === "super_admin" && !reqBody.branch
+      ? { _id: "", name: "All Branches" }
+      : branches.find((b) => b._id === reqBody.branch) || null
+  }
+  onChange={(event, value) =>
+    handleReqBodyInputChange("branch", value?._id || "")
+  }
+  disabled={user?.role === "agent"}   // 🔒 agent cannot change
+  renderInput={(params) => (
+    <TextField {...params} label="Branch" />
+  )}
+/>
       </div>
 
       <div

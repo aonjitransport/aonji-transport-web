@@ -1,4 +1,3 @@
-// src/middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
@@ -8,16 +7,16 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET!);
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Ignore static files
+  const agentBlockedPaths = [
+  "/admin/agencies",
+  "/admin/users",
+  "/admin/settings",
+];
+
+  // 🟢 Public / ignored routes
   if (
     pathname.startsWith("/_next") ||
-    pathname.match(/\.(css|js|png|jpg|svg|ico)$/)
-  ) {
-    return NextResponse.next();
-  }
-
-  // Public routes
-  if (
+    pathname.match(/\.(css|js|png|jpg|svg|ico)$/) ||
     pathname.startsWith("/admin/login") ||
     pathname.startsWith("/api/auth")
   ) {
@@ -33,11 +32,15 @@ export async function middleware(req: NextRequest) {
     const { payload } = await jwtVerify(token, JWT_SECRET);
     const role = payload.role as string;
 
-    if (pathname.startsWith("/admin")) {
-      if (!["admin", "super_admin"].includes(role)) {
-        return NextResponse.redirect(new URL("/unauthorized", req.url));
-      }
-    }
+    // 🔒 AGENT BLOCK
+ if (
+  role === "agent" &&
+  agentBlockedPaths.some(
+    (path) => pathname === path // exact match only
+  )
+) {
+  return NextResponse.redirect(new URL("/unauthorized", req.url));
+}
 
     return NextResponse.next();
   } catch {

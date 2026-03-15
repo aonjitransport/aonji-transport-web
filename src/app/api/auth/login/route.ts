@@ -1,27 +1,33 @@
-import { connectToDatabase } from "lib/mongodb";
-import { User } from "models/User";
-import bcrypt from "bcryptjs";
-import { signToken } from "lib/jwt";
 import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
+
+import { connectToDatabase } from "../../../../../lib/mongodb";
+import { User,IUser } from "../../../../../models/User";
+import { signToken } from "../../../../../lib/jwt";
 
 export async function POST(req: Request) {
   try {
     await connectToDatabase();
 
-    const body = await req.json();
-    const { loginId, password } = body;
+    const { loginId, password } = await req.json();
 
     if (!loginId || !password) {
       return NextResponse.json(
-        { error: "loginId and password are required" },
+        { error: "LoginId and password required" },
         { status: 400 }
       );
     }
 
-    // 🔒 Explicitly select password
-    const user = await User.findOne({ loginId })
+     if (!loginId || !password) return NextResponse.json({ error: "Missing credentials" }, { status: 400 });
+
+     
+
+  
+
+    // 🔍 find user
+    const user = (await User.findOne({ loginId })
       .select("+password")
-      .exec();
+      .exec()) as IUser | null;
 
     if (!user) {
       return NextResponse.json(
@@ -30,54 +36,43 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!user.isActive) {
-      return NextResponse.json(
-        { error: "Account is disabled" },
-        { status: 403 }
-      );
-    }
-
-    const valid = await bcrypt.compare(password, user.password);
-
-    if (!valid) {
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
       return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 }
       );
     }
 
-    // 🔑 Minimal JWT payload
+    // 🔐 create JWT
     const token = await signToken({
-      id: user.id.toString(),
-      role: user.role,
-    });
+  id: user._id.toString(),
+  role: user.role,
+  branchId: user.branchId?.toString(), // 👈 THIS is the key
+});
 
-    // Update last login
-    user.lastLoginAt = new Date();
-    await user.save();
+  const res = NextResponse.json({
+  success: true,
+  user: {
+    id: user._id.toString(),
+    name: user.name,
+    role: user.role,
+    branchId: user.branchId?.toString() || null,
+  },
+});
 
-    const res = NextResponse.json({
-      success: true,
-      user: {
-        id: user.id.toString(),
-        name: user.name,
-        role: user.role,
-      },
-    });
-
+    // 🍪 cookie used by middleware
     res.cookies.set("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 24 * 7,
     });
 
     return res;
-  } catch (error) {
-    console.error("LOGIN API ERROR:", error);
+  } catch (err) {
+    console.error("LOGIN ERROR:", err);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Login failed" },
       { status: 500 }
     );
   }

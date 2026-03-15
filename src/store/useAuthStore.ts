@@ -1,42 +1,60 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
-interface User {
+interface AuthUser {
   id: string;
   name: string;
-  role: string;
+  role: "super_admin" | "admin" | "agent";
+  branchId?: string;
 }
 
 interface AuthState {
   token: string | null;
-  user: User | null;
-  isAuthenticated: boolean;
-  login: (token: string, user: User) => void;
+  user: AuthUser | null;
+  hasHydrated: boolean;
+  login: (token: string, user: AuthUser) => void;
   logout: () => void;
-  rehydrate: () => void;
+  fetchMe: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  token: null,
-  user: null,
-  isAuthenticated: false,
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      token: null,
+      user: null,
+      hasHydrated: false,
 
-  login: (token, user) => {
-    localStorage.setItem("token", token);
-    localStorage.setItem("user", JSON.stringify(user));
-    set({ token, user, isAuthenticated: true });
-  },
+      login: (token, user) => {
+        localStorage.setItem("token", token); // persist token
+        set({ token, user });
+      },
 
-  logout: () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    set({ token: null, user: null, isAuthenticated: false });
-  },
+      logout: () => {
+        localStorage.removeItem("token");
+        set({ token: null, user: null });
+      },
 
-  rehydrate: () => {
-    const token = localStorage.getItem("token");
-    const user = localStorage.getItem("user");
-    if (token && user) {
-      set({ token, user: JSON.parse(user), isAuthenticated: true });
+      fetchMe: async () => {
+       
+
+        const res = await fetch("/api/auth/me", {
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          set({ user: null });
+          return;
+        }
+
+        const data = await res.json();
+        set({ user: data.user });
+      },
+    }),
+    {
+      name: "auth-storage",
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hasHydrated = true;
+      },
     }
-  },
-}));
+  )
+);

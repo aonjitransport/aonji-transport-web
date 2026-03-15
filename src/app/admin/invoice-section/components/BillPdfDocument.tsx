@@ -13,7 +13,7 @@ import { LuHeartHandshake } from "react-icons/lu";
 
 import { Image } from "@react-pdf/renderer";
 
-interface Agency {
+interface Branch {
   name: string;
   phone: string;
   address: string;
@@ -34,19 +34,24 @@ interface Consignee {
   address: string;
 }
 
+interface CreatedBy {
+  name: string;
+  role: string;
+}
+
 interface Bill {
   id: string;
   lrNumber: number;
   date: string;
   to: string;
-  agency: Agency;
+  toBranch: Branch;
   totalNumOfParcels: number;
   totalAmount: number;
   paymentStatus: boolean;
   deliveryStatus: boolean;
   consigner: Consigner;
   consignees: Consignee[];
-  administrator: string;
+  createdBy: CreatedBy;
 }
 
 interface PDFDocumentProps {
@@ -292,9 +297,9 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
 
                 <View style={{ fontFamily: "Helvetica-Bold", color: "#333" }}>
                   <Text style={{}}>To: {bill.to}</Text>
-                  <Text style={{}}>Agency: {bill.agency.name}</Text>
-                  <Text style={{}}>Address: {bill.agency.address}</Text>
-                  <Text style={{}}>Phone: {bill.agency.phone}</Text>
+                  <Text style={{}}>Agency: {bill.toBranch.name}</Text>
+                  <Text style={{}}>Address: {bill.toBranch.address}</Text>
+                  <Text style={{}}>Phone: {bill.toBranch.phone}</Text>
                 </View>
 
                 <View style={{ fontFamily: "Helvetica-Bold", color: "#333" }}>
@@ -392,7 +397,7 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                     textOverflow: "ellipsis",
                   }}
                 >
-                  <Text>Authorised By {bill?.administrator}</Text>
+                  <Text>Authorised By {bill?.createdBy?.name}</Text>
                   <Text>Aonji Express Logistics Services</Text>
                 </View>
 

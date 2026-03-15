@@ -1,6 +1,6 @@
 import { Courier_Prime } from "next/font/google";
 import type { Config } from "tailwindcss";
-const flowbite = require("flowbite-react/tailwind");
+
 
 export default {
     darkMode: ["class"],
@@ -9,7 +9,7 @@ export default {
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
 
-    flowbite.content(),
+    
   ],
   theme: {
   	extend: {
@@ -78,7 +78,7 @@ export default {
   },
   plugins: [
 
-    flowbite.plugin(),
+    
       require("tailwindcss-animate")
 ],
 } satisfies Config;

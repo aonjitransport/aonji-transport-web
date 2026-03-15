@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "../../../../../lib/mongodb";
 import { Trip } from "../../../../../models/Trip";
+import { Branch } from "../../../../../models/Branch"; // ✅ REQUIRED
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> } // params is async in App Router
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectToDatabase();
 
-    const { id } = await context.params; // MUST await
+    const { id } = await context.params;
 
     if (!id) {
       return NextResponse.json(
@@ -19,7 +20,7 @@ export async function GET(
     }
 
     const trip = await Trip.findById(id)
-      .populate("agency", "name city phone address")
+      .populate("branch", "name city phone address")
       .populate({
         path: "bills",
         populate: [

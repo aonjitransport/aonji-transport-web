@@ -1,3 +1,4 @@
+// src/app/api/load-statements/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "../../../../../lib/mongodb";
 import { LoadStatement } from "../../../../../models/LoadStatement";
@@ -16,7 +17,7 @@ export async function GET(
     }
 
     const statement = await LoadStatement.findById(id)
-      .populate("agency", "name city phone address")
+      .populate("branch", "name city phone address")
       .populate({
         path: "trips",
         populate: {

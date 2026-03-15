@@ -1,57 +1,106 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "lib/mongodb";
-import { User } from "../../../../../models/User"
+import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
-import { requireRole } from "lib/auth"
+import { connectToDatabase } from "lib/mongodb";
+import { requireRole } from "lib/auth";
+import { User } from "../../../../../models/User";
+import { Branch } from "../../../../../models/Branch";
 
-// ──────────────────────────────
-// 👑 POST /api/auth/register → Super Admin only
-// ──────────────────────────────
 export async function POST(req: NextRequest) {
   try {
-    // 🔒 Only super_admin allowed
     const auth = await requireRole(req, ["super_admin"]);
     if (auth instanceof NextResponse) return auth;
 
     await connectToDatabase();
 
-    const { name, loginId, password } = await req.json();
+    const {
+      name,
+      loginId,
+      password,
+      branchMode,     // "NEW" | "EXISTING"
+      branchId,
+      branchData,
+    } = await req.json();
 
-    if (!name || !loginId || !password) {
-      return NextResponse.json(
-        { error: "All fields are required" },
-        { status: 400 }
-      );
+    if (!name || !loginId || !password || !branchMode) {
+      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    // 🚫 Check duplicate
-    const existing = await User.findOne({ loginId });
-    if (existing) {
-      return NextResponse.json(
-        { error: "Login ID already exists" },
-        { status: 409 }
-      );
+    const exists = await User.findOne({ loginId });
+    if (exists) {
+      return NextResponse.json({ error: "Login ID exists" }, { status: 409 });
     }
 
     const hashed = await bcrypt.hash(password, 10);
 
-    await User.create({
+    // 1️⃣ Create admin WITHOUT branch first
+    const adminUser = await User.create({
       name,
       loginId,
       password: hashed,
       role: "admin",
-      createdBy: auth.user.id, // 👈 track who created
+      createdBy: auth.user.id,
     });
+
+    let finalBranchId: mongoose.Types.ObjectId;
+
+    // 2️⃣ Branch handling
+    if (branchMode === "NEW") {
+      if (!branchData?.name || !branchData?.city) {
+        return NextResponse.json(
+          { error: "Branch data required" },
+          { status: 400 }
+        );
+      }
+
+      const branch = await Branch.create({
+        ...branchData,
+        adminIds: [adminUser._id], // 👈 supports MULTIPLE admins
+        type: "OWN",
+      });
+
+      finalBranchId = branch._id as mongoose.Types.ObjectId;
+
+    } else {
+      if (!branchId) {
+        return NextResponse.json(
+          { error: "branchId required" },
+          { status: 400 }
+        );
+      }
+
+      const branch = await Branch.findById(branchId);
+      if (!branch) {
+        return NextResponse.json(
+          { error: "Invalid branchId" },
+          { status: 404 }
+        );
+      }
+
+      finalBranchId = branch._id as mongoose.Types.ObjectId;
+
+      // optional: push admin into branch admins
+      await Branch.updateOne(
+        { _id: finalBranchId },
+        { $addToSet: { adminIds: adminUser._id } }
+      );
+    }
+
+    // 3️⃣ Link admin → branch
+    adminUser.branchId = finalBranchId;
+    await adminUser.save();
 
     return NextResponse.json({
       success: true,
-      message: "Admin created successfully",
+      message: "Admin created & linked to branch",
+      adminId: adminUser._id,
+      branchId: finalBranchId,
     });
 
-  } catch (error) {
-    console.error("ADMIN REGISTER ERROR:", error);
+  } catch (err) {
+    console.error("ADMIN REGISTER ERROR:", err);
     return NextResponse.json(
-      { error: "Error creating admin" },
+      { error: "Admin creation failed" },
       { status: 500 }
     );
   }

@@ -1,9 +1,13 @@
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
-const CounterSchema = new mongoose.Schema({
-  id: { type: String, unique: true },
-  seq: { type: Number, default: 0 },
-});
+const CounterSchema = new Schema(
+  {
+    key: { type: String, required: true, unique: true }, // ✅ ONLY key
+    seq: { type: Number, default: 0 },
+  },
+  { timestamps: true }
+);
 
 export const Counter =
-  mongoose.models.Counter || mongoose.model("Counter", CounterSchema);
+  mongoose.models.Counter ||
+  mongoose.model("Counter", CounterSchema);

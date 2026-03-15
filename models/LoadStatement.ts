@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 
 const LoadStatementSchema = new mongoose.Schema({
   loadStatementId: { type: String, required: true, unique: true },
-  agency: { type: mongoose.Schema.Types.ObjectId, ref: "Agency", required: true },
+  branch: { type: mongoose.Schema.Types.ObjectId, ref: "Branch", required: true },
   trips: [{ type: mongoose.Schema.Types.ObjectId, ref: "Trip" }],
   totalFreightAmount: { type: Number, default: 0 },
   balanceDue: { type: Number, default: 0 },

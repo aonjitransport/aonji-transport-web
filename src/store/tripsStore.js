@@ -8,7 +8,7 @@ const useTripsStore = create((set, get) => ({
   error: null,
 
   fetchTrips: async (reqBody) => {
-    if (!reqBody?.agency) return;
+    if (!reqBody?.branch) return;
 
     const fetchId = ++currentFetchId;
     set({ loading: true, error: null });
@@ -17,7 +17,7 @@ const useTripsStore = create((set, get) => ({
       const params = new URLSearchParams();
       if (reqBody.month) params.append("month", reqBody.month);
       if (reqBody.year) params.append("year", reqBody.year);
-      if (reqBody.agency) params.append("agency", reqBody.agency);
+      if (reqBody.branch) params.append("branch", reqBody.branch);
 
       const res = await fetch(`/api/trips?${params.toString()}`);
       const data = await res.json();

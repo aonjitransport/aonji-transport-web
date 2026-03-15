@@ -1,10 +1,8 @@
-import { Alert } from "flowbite-react";
+import Alert from '@mui/material/Alert';
 
-export function AlertComponent( {color,messageHead,message} ) {
+export function AlertComponent( {severity,message} ) {
   return (
-    <Alert color={color} rounded className=" sticky top-14 z-40 " >
-      <span className="font-medium">{messageHead} </span > <span className="font-sans" >{message}</span>
-    </Alert>
+    <Alert severity={severity}>{message}</Alert>
   );
 }
 

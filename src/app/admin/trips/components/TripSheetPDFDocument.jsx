@@ -141,7 +141,7 @@ const TripSheetPDFDocument = ({ trip }) => {
           }}
         >
           <View style={{ flexDirection: "row", gap: 8 }}>
-            <Text style={styles.text}>Agency: {trip.agency?.name}</Text>
+            <Text style={styles.text}>Agency: {trip.destinationBranch?.name}</Text>
             <Text style={styles.text}>Driver: {trip.driver}</Text>
             <Text style={styles.text}>Trip ID: {trip.tripId}</Text>
           </View>

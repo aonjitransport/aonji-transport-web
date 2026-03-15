@@ -141,7 +141,7 @@ const TripSheetPDFDocument = ({ trip }) => {
           }}
         >
           <View style={{ flexDirection: "row", gap: 8 }}>
-            <Text style={styles.text}>Agency: {trip.agency?.name}</Text>
+            <Text style={styles.text}>Agency: {trip.destinationBranch.name}</Text>
             <Text style={styles.text}>Driver: {trip.driver}</Text>
             <Text style={styles.text}>Trip ID: {trip.tripId}</Text>
           </View>
@@ -155,7 +155,7 @@ const TripSheetPDFDocument = ({ trip }) => {
             <Text style={[styles.tableCol, styles.text, styles.smallCol]}>
               Sl No.
             </Text>
-            <Text style={[styles.tableCol, styles.text]}>Bill No</Text>
+            <Text style={[styles.tableCol, styles.text]}>LR No</Text>
             <Text style={[styles.tableCol, styles.text]}>Consigner</Text>
             <Text style={[styles.tableCol, styles.text, { flex: 3 }]}>
               Consignees

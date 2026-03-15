@@ -16,11 +16,13 @@ const DeliveryStatusRenderer = (props) => {
 };
 
 import { AgGridReact } from "ag-grid-react";
-import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
+import { _isRowSelection, AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import "./styles/dataGridStyles.css";
 import useBillsStore from "../../../store/billsStore"; // Zustand Store
-import { useAgencyStore } from "../../../store/agencyStore";
+
 import useTripsStore from "../../../store/tripsStore";
+import useBranchStore from "../../../store/branchStore";
+import { useAuthStore } from "../../../store/useAuthStore";
 import { FaDownload } from "react-icons/fa";
 import { IoPrint } from "react-icons/io5";
 
@@ -65,7 +67,13 @@ import MenuItem from '@mui/material/MenuItem';
 import  { InputLabel } from "@mui/material";
 import  FormControl from "@mui/material/FormControl";
 import Button from  "@mui/material/Button";
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
 import { set } from "mongoose";
+import { isError } from "postcss/lib/css-syntax-error";
+
+
+
 
 
 
@@ -90,7 +98,28 @@ const DataGrid = () => {
   const { isMobile } = useBreakpoint();
 
   const pdfComonentRef = useRef(null)
- 
+
+
+    const user = useAuthStore((state) => state.user);
+    const fetchMe = useAuthStore((state) => state.fetchMe);
+    const hasHydrated = useAuthStore((state) => state.hasHydrated);
+    useEffect(() => {
+    if (hasHydrated && !user) {
+      fetchMe();
+    }
+    }, [hasHydrated, user, fetchMe]);
+  
+    const fromBranch = user?.branchId;
+
+    const TAB_DIRECTION_MAP = {
+  0: "ALL",
+  1: "OUTGOING",
+  2: "INCOMING",
+};
+
+    
+  
+    
 
    const handlePrintPdf = useReactToPrint({
       contentRef:pdfComonentRef, 
@@ -162,6 +191,12 @@ const DataGrid = () => {
       pdf.save("A4_Print_Document.pdf");
     };
     
+
+
+  const allBranches = useBranchStore((state) => state.branches);
+  const BranchesEcludingUserBranch = useBranchStore((state) => state.branchesExcludeUserBranch);
+  const [serviceAreasEcludingUserBranch, setServiceAreasEcludingUserBranch] = useState([]);
+  const [selectedBranch, setSelectedBranch] = useState(null);
     
 
 
@@ -184,6 +219,8 @@ const DataGrid = () => {
 
   const [loading, setLoading] = useState(true);
 
+  
+
   //trip store
   const { createTrip,tripCreateStatus } = useTripsStore();
   
@@ -200,34 +237,56 @@ const DataGrid = () => {
     month: "",
     year: "",
     to: "",
-    agencyName:"",
-    agencyId:"",
+    fromBranch: "",
+    toBranch: "", 
+    direction: "OUTGOING", // "OUTGOING" | "INCOMING" | "ALL"
     deliveryStatus: false, // null means no filter, true or false to filter accordingly
   });
 
-  const fetchFilteredBills = async (filters) => {
-  const params = new URLSearchParams(filters).toString();
-  const res = await fetch(`/api/bills?${params}`);
-  console .log("fetching filtered bills with params:", params);
+  useEffect(() => {
+    if (user?.branchId) {
+      setBillsReqBody((prev) => ({
+        ...prev,
+        fromBranch: user.branchId,
+      }));
+    }
+  }, [user]);
+  
+
+ const fetchFilteredBills = async (filters) => {
+  const cleanedFilters = { ...filters };
+
+  // Remove incorrect branch filter depending on direction
+  if (cleanedFilters.direction === "INCOMING") {
+    delete cleanedFilters.fromBranch;
+  }
+
+  if (cleanedFilters.direction === "OUTGOING") {
+    delete cleanedFilters.toBranch;
+  }
+
+  const params = new URLSearchParams(
+    Object.entries(cleanedFilters).filter(([_, v]) => v !== "" && v !== null)
+  );
+
+  const res = await fetch(`/api/bills?${params.toString()}`);
   const data = await res.json();
   setFilteredBills(data);
-  console.log("Filtered bills fetched:", data);
-  
 };
+
 
 // Call fetchFilteredBills({ year, month, to }) when filters change
 useEffect(() => {
-  console.log ("Filters changed, fetching bills with:", billsReqBody);
-  fetchFilteredBills({
-    month: billsReqBody.month,
-    year: billsReqBody.year,
-    to: billsReqBody.to,
-    agencyName: billsReqBody.agencyName,
-
-    deliveryStatus: billsReqBody.deliveryStatus
-  });
-}, [billsReqBody.month, billsReqBody.year, billsReqBody.to,billsReqBody.agencyName,billsReqBody.deliveryStatus]);
-
+  fetchFilteredBills(billsReqBody);
+}, [
+  billsReqBody.month,
+  billsReqBody.year,
+  billsReqBody.to,
+  billsReqBody.fromBranch,
+  billsReqBody.toBranch,
+  billsReqBody.direction,
+  billsReqBody.deliveryStatus,
+]);
 
 
 
@@ -238,7 +297,7 @@ useEffect(() => {
  
 
  
-  const [Charges,setCharges]=useState({ totalArticels:0,totalAmount:0,agencyCharges:agencyCommissionCharges,grandTotalChargeAmount:0,netPayableAmount:0,totalUnpaidAmount:0,driverName:"" })
+  const [Charges,setCharges]=useState({ totalArticels:0,totalAmount:0,agencyCharges:agencyCommissionCharges,grandTotalChargeAmount:0,netPayableAmount:0,totalUnpaidAmount:0,driverName:"",vehicleNumber:"" })
   
 
 
@@ -263,7 +322,7 @@ useEffect(() => {
 
   const months = [
     "january",
-    "febrauary",
+    "february",
     "march",
     "april",
     "may",
@@ -278,11 +337,21 @@ useEffect(() => {
 
   
 
-  const agencies = useAgencyStore((state) => state.agencies); // get agencies from store
-  const fetchAgencies = useAgencyStore((state)=>state.fetchAgencies)
-  const getAllAgenciesByCity = useAgencyStore((state)=>state.getAllAgenciesByCity)
-  const getAgenciesByArea = useAgencyStore((state)=>state.getAgenciesByArea)
+  
+  
+  
+  const fetchAllBranches = useBranchStore((state)=>state.fetchBranches)
+  const fetchBranchesEcludeUserBranch = useBranchStore((state)=>state.fetchBranchesEcludeUserBranch)
+  
+  
   const [years, setYears] = useState([]);
+
+
+
+   // tabs default value is set according to user role. if super admin -> all, else outgoing because other two tabs are not relevant for non super admin users.
+   const [tabsValue, setTabsValue] = useState(user?.role==="super_admin"? 0 : 1);
+   
+  
   
   
   
@@ -298,6 +367,7 @@ useEffect(() => {
   useEffect(() => {
   setTripData({
     driver: Charges.driverName,
+    vehicleNumber: Charges.vehicleNumber,
     agencyCharges: {
       chargeAmount: Charges.agencyCharges.chargeAmount,
       chargeRate: Charges.agencyCharges.chargeRate,
@@ -308,52 +378,52 @@ useEffect(() => {
     totalUnpaidAmount: Charges.totalUnpaidAmount,
  
     bills: tripIds, // <-- will now update
-    agencyName: billsReqBody.agencyName || "N/A",
-    agencyId:billsReqBody.agencyId || "N/A",
+   
+    
     grandTotalChargeAmount: Charges.grandTotalChargeAmount,
-    netPayableAmount  : Charges.netPayableAmount
+    netPayableAmount  : Charges.netPayableAmount,
+
+    originBranch: billsReqBody.fromBranch ,
+    destinationBranch :selectedBranch?._id || "N/A",
   });
 }, [
   Charges,
-  
+  selectedBranch,
   tripIds,
  
 ]);
 
 
+ 
   useEffect(() => {
-  fetchAgencies(); // just trigger fetch on mount
-  }, [fetchAgencies]);
+  fetchAllBranches(); // just trigger fetch on mount
+  }, [fetchAllBranches]);
 
+  useEffect(() => {
+    fetchBranchesEcludeUserBranch(); // just trigger fetch on mount
+  }, [fetchBranchesEcludeUserBranch]);
 
- useEffect(() => {
-  if (agencies && Array.isArray(agencies)) {
-    const allAreas = agencies
-      ?.map(agency => agency.serviceAreas || [])
-      ?.flat()
-      ?.filter(Boolean)
-      ?.map(area => area.toLowerCase().trim()); // normalize to lowercase & remove spaces
-
-    const uniqueSortedCities = Array.from(new Set(allAreas)).sort();
-
-    setAreas(uniqueSortedCities);
-    console.log("Normalized, unique, sorted service areas:", uniqueSortedCities);
-  }
-}, [agencies]);
+ 
 
 
   const gridRef = useRef(null);
 
-   useEffect(()=>{
-    async function fetchData() {
-      const r = await fetchAgencies()
-    }
-    fetchData()
-   },[])
-
+  
   useEffect(() => {
     fetchBills().then(() => setLoading(false));
-  }, [fetchBills]);
+  }, [fetchBills, user?.branchId,]);
+
+   useEffect(() => {
+     async function loadAreas() {
+       const res = await fetch("/api/branches/exclude-user-service-areas");
+       const data = await res.json();
+       setServiceAreasEcludingUserBranch(data.areas || []);
+       console.log("Service areas loaded:", data.areas);
+     }
+   
+     loadAreas();
+   }, []);
+    
 
  
 
@@ -362,68 +432,16 @@ useEffect(() => {
 const normalize = (s) => (typeof s === "string" ? s.trim().toLowerCase() : "");
 
  
-useEffect(() => {
-  if (billsReqBody.agencyName) {
-    // Find the selected agency in the list
-    const selectedAgency = agencies.find(
-      agency => agency.name === billsReqBody.agencyName
-    );
-
-    if (selectedAgency) {
-      // Extract its service areas
-      const agencyAreas = selectedAgency.serviceAreas || [];
-      setAreas(agencyAreas);
-    } else {
-      setAreas([]); // Clear areas if agency not found
-    }
-  } else {
-    if (agencies && Array.isArray(agencies)) {
-    const allAreas = agencies
-      ?.map(agency => agency.serviceAreas || [])
-      ?.flat()
-      ?.filter(Boolean)
-      ?.map(area => area.toLowerCase().trim()); // normalize to lowercase & remove spaces
-
-    const uniqueSortedCities = Array.from(new Set(allAreas)).sort();
-
-    setAreas(uniqueSortedCities);
-    console.log("Normalized, unique, sorted service areas:", uniqueSortedCities);
-  }
-  }
-}, [billsReqBody.agencyName, agencies]);
 
   
   // 2) Derive filteredAgencies when area selection or agencies change
  
 
-const filteredAgencies = useMemo(() => {
-  if (!agencies || agencies.length === 0) return [];
-
-  if (billsReqBody.to) {
-    const target = normalize(billsReqBody.to);
-    return agencies.filter(a =>
-      (a.serviceAreas || []).some(sa => normalize(sa) === target)
-    );
-  }
-
-  // no area selected -> return all agencies
-  return agencies;
-}, [agencies, billsReqBody.to]);
+    
 
 //3) If user changes area, and currently selected agency doesn't serve it -> reset agencyName
     //  (keeps consistency so two-way filter doesn't conflict)
 
-useEffect(() => {
-  if (!billsReqBody.to || !billsReqBody.agencyName) return;
-
-  const selectedAgency = agencies.find(a => a.name === billsReqBody.agencyName);
-  const target = normalize(billsReqBody.to);
-
-  if (selectedAgency && !(selectedAgency.serviceAreas || []).some(sa => normalize(sa) === target)) {
-    // selected agency does not serve this area -> clear agency selection
-    setBillsReqBody(prev => ({ ...prev, agencyName: "" }));
-  }
-}, [billsReqBody.to, billsReqBody.agencyName, agencies]);
 
 
 
@@ -520,7 +538,7 @@ useEffect(() => {
 // filteredBills = bills after your filters (fetched/derived elsewhere)
 const displayRows = useMemo(() => {
   const idSet = new Set(tripIds);
-  return (filteredBills || []).map(bill => ({
+  return (filteredBills || [])?.map(bill => ({
     ...bill,
     // tick the flag if this bill's _id is in tripIds
     addedToTripFlag: idSet.has(bill._id),
@@ -532,7 +550,7 @@ useEffect(() => {
   if (!filteredBills || !deliveryBillsList) return;
 
   // ✅ Map only once per dependency change
-  const billsWithTripFlags = filteredBills.map(bill => ({
+  const billsWithTripFlags = filteredBills?.map(bill => ({
     ...bill,
     addedToTripFlag: deliveryBillsList.some(
       deliveryBill => deliveryBill._id === bill._id
@@ -566,8 +584,15 @@ useEffect(() => {
       minWidth: 150,
     },
     {
-      headerName: "Agency Name",
-      field: "agency.name",
+      headerName: "From Branch",
+      field: "fromBranch.name",
+      width: 200,
+      minWidth: 200,
+      
+    },
+    {
+      headerName: "To Branch",
+      field: "toBranch.name",
       width: 200,
       minWidth: 200,
     },
@@ -597,14 +622,7 @@ useEffect(() => {
       minWidth: 80,
     },
 
-    {
-      headerName: "Delivery",
-      field: "deliveryStatus",
-      editable: false,
-      width: 90,
-      cellRenderer: DeliveryStatusRenderer,
-      onCellValueChanged: (params) => handleStatusChange(params, "deliveryStatus"),
-    },
+    
     {
       headerName: "Amount",
       field: "totalAmount",
@@ -618,27 +636,55 @@ useEffect(() => {
     {
       headerName: "Payment",
       field: "paymentStatus",
-      editable: true,
+      editable: false,
       minWidth: 90,
       width: 90,
       cellEditor: "agCheckboxCellEditor",
       cellRenderer: "agCheckboxCellRenderer",
-      onCellValueChanged: (params) =>
-        handleStatusChange(params, "paymentStatus"),
+      cellRenderer: DeliveryStatusRenderer,
+      onCellValueChanged: (params) => handleStatusChange(params, "deliveryStatus"),
+      
     },
- {
+    {
+      headerName: "Delivery",
+      field: "deliveryStatus",
+      editable: false,
+      width: 90,
+      cellRenderer: DeliveryStatusRenderer,
+      onCellValueChanged: (params) => handleStatusChange(params, "deliveryStatus"),
+    },
+    
+    {
+      
   headerName: "Add To Trip",
   field: "addedToTripFlag",
-  editable: (params) => !params.data.deliveryStatus,
+  editable: //not editable if user is super admin because trip setting is not relevant for super admin and also not editable if bill is already delivered
+    user?.role === "super_admin" ? false : (params) => {
+      if(params.data.deliveryStatus) return false; // not editable if already delivered 
+      if(billsReqBody.direction === "INCOMING") return false; // not editable if direction is incoming
+      return true; // editable otherwise
+    },
+  
   minWidth: 90,
   width: 120,
   cellEditor: "agCheckboxCellEditor",
   cellRenderer: "agCheckboxCellRenderer",
+  
+
   onCellValueChanged: (params) => {
     const { data } = params;
     const _id = data._id;
 
     if (params.newValue) {
+      if(selectedBranch == null){
+        alert("Please select a branch in the filter before adding bills to a trip.");
+        params.api.refreshCells({ force: true });
+        return;
+      }
+      if(tripIds.includes(_id)) {
+        console.warn("Bill already added to trip:", _id);
+        return;
+      }
       // add id (avoid duplicates)
       setTripIds(prevIds => prevIds.includes(_id) ? prevIds : [...prevIds, _id]);
 
@@ -692,9 +738,28 @@ useEffect(() => {
   
 };
 
+const refreshBillsData = async () => {
+  try {
+    await fetchFilteredBills(billsReqBody); // reload filtered bills
+    setTripIds([]);
+    setdeliveryBillsList([]);
+
+    if (gridRef.current?.api) {
+      gridRef.current.api.refreshCells({ force: true });
+    }
+
+    console.log("Bills refreshed successfully");
+  } catch (err) {
+    console.error("Failed to refresh bills:", err);
+  }
+};
+
   const handlePostTrip = async () => {    
     try {
+
+    console.log("Trip data being sent:", tripData);
     const result = await createTrip(tripData); // 👈 await here
+    
     setCreatedTripId(result?._id || null)
       
     setOpenTripSuccessDialog(true)
@@ -708,7 +773,7 @@ useEffect(() => {
       setPrintBillsFlag(false);
 
       // ✅ Wait a moment or directly refetch bills
-      await fetchBills(); // make sure this also returns a Promise
+      await refreshBillsData(); 
       
       console.log("Bills refetched after trip creation");
     } else {
@@ -795,12 +860,7 @@ useEffect(() => {
   }
   
 
-  useEffect(()=>{
-    
-    
-
-  },[])
-
+ 
 
 
 //  loading || years.length === 0
@@ -830,6 +890,21 @@ useEffect(() => {
   // };
 
 
+ 
+
+  
+const handleTabsChange = (event, newValue) => {
+  setTabsValue(newValue);
+
+  setBillsReqBody((prev) => ({
+    ...prev,
+    direction: TAB_DIRECTION_MAP[newValue],
+  }));
+  console.log("Tab changed to:", tabsValue, "Updated req body:", billsReqBody);
+};
+
+
+
    
 
   
@@ -841,148 +916,179 @@ useEffect(() => {
           <div className="  flex-grow gap-1 flex scale-75 md:scale-100  ">
             <div>
               <FormControl>
-              <InputLabel id="demo-simple-select-label">Month</InputLabel>
-              <Select
-                labelId="demo-simple-select-label"
-                id="demo-simple-select" 
-                defaultValue={months[dateObj.getMonth()]}
-                label="Month"  
-                onChange={(e) => {
-                  handleReqBodyInputChange("month", e.target.value);  
-                }}
-              >
-                {months.map((value, index) => (   
-                  <MenuItem key={index} value={value}>
-                    {value}{" "}
-                  </MenuItem>
-                )) 
-              }
-              </Select>
-             </FormControl>
-            </div>  
-
-            
-
-            <div>
-             <FormControl>
-              <InputLabel id="demo-simple-select-label">agency</InputLabel>
-              <Select
-                labelId="demo-simple-select-label"
-                id="demo-simple-select" 
-
-                defaultValue={years.find( 
-                  (year) => year === dateObj.getFullYear()
-                )}
-                label="Year"  
-                onChange={(e) => {
-                  handleReqBodyInputChange("year", e.target.value);
-                }}
-              >
-                {years.map((value, index) => (  
-                  <MenuItem key={index} value={value}>
-                    {value}{" "}
-                  </MenuItem>
-                ))  
-              
-                 }
-              </Select>
-             </FormControl>
-
-             
+                <InputLabel id="demo-simple-select-label">Month</InputLabel>
+                <Select
+                  labelId="demo-simple-select-label"
+                  id="demo-simple-select"
+                  defaultValue={months[dateObj.getMonth()]}
+                  label="Month"
+                  onChange={(e) => {
+                    handleReqBodyInputChange("month", e.target.value);
+                  }}
+                >
+                  {months.map((value, index) => (
+                    <MenuItem key={index} value={value}>
+                      {value}{" "}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </div>
 
-          
-
-            <div  >
-
+            <div>
               <FormControl>
-              <InputLabel id="demo-simple-select-label">Agency</InputLabel> 
-              <Select 
-                fullWidth
-                labelId="demo-simple-select-label"
-                id="demo-simple-select"
-                value={ billsReqBody.agencyName  }
-                
-                label="Agency"
-                onChange={(e) => {
-                  const selected = filteredAgencies.find(agency => agency.name === e.target.value); 
-                  console.log("selected agent", selected)
-                  setBillsReqBody(prevState => ({
-                    ...prevState,
-                    agencyId : selected ? selected._id : "",
-                    agencyName: selected  ? selected.name : ""
-                  })); 
-                    setTripData(prevState => ({
-                    ...prevState,
-                    agencyId : selected ? selected._id : "",
-                    agencyName: selected  ? selected.name : ""
-                  })); 
-                 
-                }}
-              >
-                <MenuItem value={""}>Select an agency</MenuItem>  
-                {filteredAgencies?.map((value,index)=>(
-                  <MenuItem value={value.name} key={index}  >{value.name}</MenuItem>
-                ))  
-                }
-              </Select>
-              </FormControl>   
-              
-            
+                <InputLabel id="demo-simple-select-label">year</InputLabel>
+                <Select
+                  labelId="demo-simple-select-label"
+                  id="demo-simple-select"
+                  defaultValue={years.find(
+                    (year) => year === dateObj.getFullYear(),
+                  )}
+                  label="Year"
+                  onChange={(e) => {
+                    handleReqBodyInputChange("year", e.target.value);
+                  }}
+                >
+                  {years.map((value, index) => (
+                    <MenuItem key={index} value={value}>
+                      {value}{" "}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </div>
+
+            <div>
+              <FormControl>
+                <InputLabel id="demo-simple-select-label">Agency</InputLabel>
+                <Select
+                  value={billsReqBody.toBranch}
+                  labelId="demo-simple-select-label"
+                  onChange={(e) => {
+                    
+                   
+                    setBillsReqBody((prev) => ({
+                      ...prev,
+                      toBranch: e.target.value,
+                    }));
+                    setSelectedBranch(
+                      BranchesEcludingUserBranch.find((branch) => branch._id === e.target.value),
+                    );
+                  }}
+                >
+                  <MenuItem value="">All Agencies</MenuItem>
+                  {BranchesEcludingUserBranch?.map((branch) => (
+                    <MenuItem key={branch._id} value={branch._id}>
+                      {branch.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </div>
 
             {/* for optional filter have to render conditionally */}
 
-            { filterByAreaCheckedState && (
-
-            <div  className="flex-grow  ">
-              <FormControl fullWidth>
-
-              <InputLabel id="demo-simple-select-label">Destination Area</InputLabel>
-              <Select
-                labelId="demo-simple-select-label"
-                id="demo-simple-select" 
-                value={billsReqBody.to}
-                label="Destination Area"
-                onChange={(e)=>{handleReqBodyInputChange("to",e.target.value)   
-                  }}  
-              >
-                <MenuItem value={""}>Select an area</MenuItem>  
-                  {areas.map((value,index)=>( 
-                    <MenuItem value={value} key={index}  >{value}</MenuItem>
-                  ))} 
-              </Select>
-
-              </FormControl>
-
-              
-            </div>
+            {filterByAreaCheckedState && (
+              <div className="flex-grow  ">
+                <FormControl fullWidth>
+                  <InputLabel id="demo-simple-select-label">
+                    Destination Area
+                  </InputLabel>
+                  <Select
+                    labelId="demo-simple-select-label"
+                    id="demo-simple-select"
+                    value={billsReqBody.to}
+                    label="Destination Area"
+                    onChange={(e) => {
+                      handleReqBodyInputChange("to", e.target.value);
+                    }}
+                  >
+                    <MenuItem value={""}>Select an area</MenuItem>
+                    {serviceAreasEcludingUserBranch.map((value, index) => (
+                      <MenuItem value={value} key={index}>
+                        {value}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </div>
             )}
 
-                  
             <div className="flex justify-center items-end mt-3 ">
               <button
                 type="button"
-                onClick={()=>{handleReq,handleSubmit();console.log("charges",Charges,"dleivery bills",deliveryBillsList,"is mobile",isMobile,"req body",billsReqBody)}}
+                onClick={() => {
+                  (handleReq, handleSubmit());
+                  console.log(
+                    "charges",
+                    Charges,
+                    "dleivery bills",
+                    deliveryBillsList,
+                    "is mobile",
+                    isMobile,
+                    "req body",
+                    billsReqBody,
+                    "uer",
+                    user,
+                    "branches",
+                    allBranches,
+                    "trip data",
+                    tripData,
+                  );
+                }}
                 className=" flex justify-center items-center my-1  h-10  text-white   bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm p-2.5    dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
               >
                 <span>Get Bills</span>
               </button>
             </div>
 
-            
+            <div className="flex justify-center items-end  ">
+              <div className="flex items-center mb-4 ml-2 ">
+                <input
+                  id="default-checkbox"
+                  checked={!billsReqBody.deliveryStatus}
+                  onChange={() => {
+                    handleReqBodyInputChange(
+                      "deliveryStatus",
+                      !billsReqBody.deliveryStatus,
+                    );
+                  }}
+                  type="checkbox"
+                  value=""
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                />
+                <label className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                  undelivered
+                </label>
+              </div>
+              <div className="flex items-center mb-4 ml-2 ">
+                <input
+                  id="default-checkbox"
+                  checked={filterByAreaCheckedState}
+                  onChange={() => {
+                    setFilterByAreaCheckedState(!filterByAreaCheckedState);
+                  }}
+                  type="checkbox"
+                  value=""
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                />
+                <label className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                  filter by destination
+                </label>
+              </div>
+            </div>
 
-       <div className="flex justify-center items-end  ">
-          <div className="flex items-center mb-4 ml-2 " >
-           <input id="default-checkbox" checked={!billsReqBody.deliveryStatus} onChange={()=>{handleReqBodyInputChange("deliveryStatus",!billsReqBody.deliveryStatus)}} type="checkbox" value="" className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"/>
-           <label  className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">undelivered</label>
-          </div>
-           <div className="flex items-center mb-4 ml-2 " >
-           <input id="default-checkbox" checked={filterByAreaCheckedState} onChange={()=>{setFilterByAreaCheckedState(!filterByAreaCheckedState)}}  type="checkbox" value="" className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"/>
-           <label  className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">filter by destination</label>
-          </div>
-        </div>
-
+            <div className=" ">
+              <Tabs
+                value={tabsValue}
+                onChange={handleTabsChange}
+                aria-label="bill direction tabs"
+              >
+                <Tab label="All" disabled={user?.role !== "super_admin"} />
+                <Tab label="Outgoing" disabled={user?.role === "super_admin"} />
+                <Tab label="Incoming" disabled={user?.role === "super_admin"} />
+              </Tabs>
+            </div>
           </div>
         </form>
       </div>
@@ -1011,122 +1117,100 @@ useEffect(() => {
 
       <hr />
 
-      
-      
+      <div className=" md:flex  ">
+        <div className="p-4 "></div>
+        <div className="p-4">
+          <h1 className="font-mono text-center font-extrabold text-2xl">
+            Agency Commision Charges
+          </h1>
+          <Table>
+            <TableHeader columns={agencyCommissionChargesTableColumns}>
+              <TableRow>
+                <TableHead>Total Amount</TableHead>
+                <TableHead>Charge Rate</TableHead>
+                <TableHead>Charged Amount</TableHead>
+              </TableRow>
+            </TableHeader>
 
-      <div className=" md:flex  " >  
-        
-      <div className="p-4 " >
-        
-     
-   
-      </div>
-      <div className="p-4" >
-        <h1 className="font-mono text-center font-extrabold text-2xl" >Agency Commision Charges</h1>
-      <Table  >
-                        <TableHeader columns={agencyCommissionChargesTableColumns}>
-                         <TableRow>
-                         <TableHead>Total Amount</TableHead>
-                          <TableHead>Charge Rate</TableHead>
-                          <TableHead>Charged Amount</TableHead>
-                          </TableRow>
-                      </TableHeader>
-
-                      <TableBody>
-
-                      
-                        <TableRow    >
-                        <TableCell className="text-center"  > ₹{Charges.totalAmount}  </TableCell>
-                        <TableCell className="text-center" >{agencyCommissionCharges.chargeRate}% </TableCell>
-                        <TableCell className="text-center" >₹{agencyCommissionCharges.chargeAmount} </TableCell>
-                        </TableRow>
-                        
-                     
-
-
-                      </TableBody>
-
-        </Table>
-        <div className="flex justify-end p-5 font-mono font-bold " >Total:₹{agencyCommissionCharges.chargeAmount}</div>
-
-      </div>
-
-
-        <div className="flex justify-end p-5 gap-4 " >
-          <div>
-        <button
-                type="button"
-                onClick={()=>{handleReq
-                  handleSetTrip()
-                }}
-                className="bg-blue-600 text-white px-4 py-2 rounded mb-4"
-              >
-                <span> Set Trip</span>
-              </button>
-              </div>
-              
-
-                   
-                 
-                 
+            <TableBody>
+              <TableRow>
+                <TableCell className="text-center">
+                  {" "}
+                  ₹{Charges.totalAmount}{" "}
+                </TableCell>
+                <TableCell className="text-center">
+                  {agencyCommissionCharges.chargeRate}%{" "}
+                </TableCell>
+                <TableCell className="text-center">
+                  ₹{agencyCommissionCharges.chargeAmount}{" "}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+          <div className="flex justify-end p-5 font-mono font-bold ">
+            Total:₹{agencyCommissionCharges.chargeAmount}
+          </div>
         </div>
-        
-         </div>
 
-                {/*print bills list modals are here  */}
-    
+        <div className="flex justify-end p-5 gap-4 ">
+          <div>
+            <button
+              type="button"
+              onClick={() => {
+                handleReq;
+                handleSetTrip();
+              }}
+              className="bg-blue-600 text-white px-4 py-2 rounded mb-4"
+            >
+              <span> Set Trip</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
-
+      {/*print bills list modals are here  */}
 
       <Dialog
         open={openChargeseModal}
         onClose={() => setOpenChargesModal(false)}
       >
-        <DialogTitle  >Charges</DialogTitle>
+        <DialogTitle>Charges</DialogTitle>
         <DialogContent>
           <div>
-            
-         
-            <h1 className="font-semibold text-xl" >Add Driver Name</h1>
+            <h1 className="font-semibold text-xl">Add Driver Name</h1>
             <div>
-                 
-                 <TextField
-                   
-                 
-                  
-                    fullWidth
-                    label = "Driver's Name"
-                   value={Charges.driverName}
-                   onChange={(e) => handleOnChangeChargesInput("driverName",e.target.value)}
-                   placeholder="Enter Driver's Name Here"
-                 />
+              <TextField
+                fullWidth
+                label="Driver's Name"
+                value={Charges.driverName}
+                onChange={(e) =>
+                  handleOnChangeChargesInput("driverName", e.target.value)
+                }
+                placeholder="Enter Driver's Name Here"
+              />
             </div>
-
-           
-
-
-               
+             <div>
+              <TextField
+                fullWidth
+                label="Vehicle Number"
+                value={Charges.vehicleNumber}
+                onChange={(e) =>
+                  handleOnChangeChargesInput("vehicleNumber", e.target.value)
+                }
+                placeholder="Enter Vehicle Number Here"
+              />
+            </div>
           </div>
 
-
-
-
-
-
-
-
-                  {/* agency commission */}
+          {/* agency commission */}
 
           <div>
-            <h1 className="font-semibold text-xl py-4" >Agency Comission</h1>
+            <h1 className="font-semibold text-xl py-4">Agency Comission</h1>
             <div className="flex justify-start items-start gap-1 ">
               <div>
-                
                 <TextField
-                 
                   type="number"
                   min={1}
-                  
                   label="Total Amount"
                   value={Charges.totalAmount}
                   placeholder="Total Amount "
@@ -1134,302 +1218,297 @@ useEffect(() => {
                 />
               </div>
               <div>
-              
                 <TextField
                   label="Charge Rate (%)"
-                  
                   type="number"
                   min={1}
-                  
                   placeholder="Charge percent    "
                   value={agencyCommissionCharges.chargeRate}
-                  onChange={(e)=>{handleOnChangeAgencyCommisionCharges("chargeRate",e.target.value),console.log(agencyCommissionCharges);
+                  onChange={(e) => {
+                    (handleOnChangeAgencyCommisionCharges(
+                      "chargeRate",
+                      e.target.value,
+                    ),
+                      console.log(agencyCommissionCharges));
                   }}
                 />
               </div>
-              <div className="flex gap-1 mt-5 " >
-
-
-              <button
-                  
-                  className= {`bg-blue-700 hover:bg-blue-800 text-white font-bold py-1 px-2 border ${agencyCommissionCharges.addedFlag?"cursor-not-allowed opacity-45":""}   rounded`}
+              <div className="flex gap-1 mt-5 ">
+                <button
+                  className={`bg-blue-700 hover:bg-blue-800 text-white font-bold py-1 px-2 border ${agencyCommissionCharges.addedFlag ? "cursor-not-allowed opacity-45" : ""}   rounded`}
                   size="sm"
-                  onClick={()=>{  
-                    const totAmount = Charges.totalAmount/100 * agencyCommissionCharges.chargeRate;
-                    handleOnChangeAgencyCommisionCharges("chargeAmount",totAmount);console.log(agencyCommissionCharges,"all charge",Charges);
-                    handleOnChangeAgencyCommisionCharges("addedFlag",true)
-                   }}
-                  
+                  onClick={() => {
+                    const totAmount =
+                      (Charges.totalAmount / 100) *
+                      agencyCommissionCharges.chargeRate;
+                    handleOnChangeAgencyCommisionCharges(
+                      "chargeAmount",
+                      totAmount,
+                    );
+                    console.log(agencyCommissionCharges, "all charge", Charges);
+                    handleOnChangeAgencyCommisionCharges("addedFlag", true);
+                  }}
                 >
-                  {agencyCommissionCharges.addedFlag?"Added":"Add"}
+                  {agencyCommissionCharges.addedFlag ? "Added" : "Add"}
                 </button>
 
-
                 <button
-                  
-
-                  className={`bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 border  rounded ${!agencyCommissionCharges.addedFlag?"cursor-not-allowed opacity-45":""}  `}
+                  className={`bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 border  rounded ${!agencyCommissionCharges.addedFlag ? "cursor-not-allowed opacity-45" : ""}  `}
                   size="sm"
-                  onClick={()=>{ handleOnChangeAgencyCommisionCharges("chargeAmount",0),handleOnChangeAgencyCommisionCharges("addedFlag",false);console.log(agencyCommissionCharges)}}
-                 
+                  onClick={() => {
+                    (handleOnChangeAgencyCommisionCharges("chargeAmount", 0),
+                      handleOnChangeAgencyCommisionCharges("addedFlag", false));
+                    console.log("agency commision ",agencyCommissionCharges);
+                    
+                  }}
                 >
                   Remove
                 </button>
-      
-
-
               </div>
-
-
             </div>
-            <div className="flex gap-2 justify-start my-2 " >
-                <p className="border-r-2 px-1 " >total amount : { Charges.totalAmount } </p>
-                <p className="border-r-2 px-1 ">charge rate:{Charges.agencyCharges.chargeRate}% </p>
-                <p className="border-r-2 px-1 " >total charge amount:{  Charges.agencyCharges.chargeAmount } </p>
-              </div>
+            <div className="flex gap-2 justify-start my-2 ">
+              <p className="border-r-2 px-1 ">
+                total amount : {Charges.totalAmount}{" "}
+              </p>
+              <p className="border-r-2 px-1 ">
+                charge rate:{Charges.agencyCharges.chargeRate}%{" "}
+              </p>
+              <p className="border-r-2 px-1 ">
+                total charge amount:{Charges.agencyCharges.chargeAmount}{" "}
+              </p>
+            </div>
           </div>
-
-
-
-
-         
-
-
         </DialogContent>
         <DialogActions>
-          <Button color="blue" onClick={handlePostTrip}  >Add Trip</Button>
+          <Button color="blue" onClick={handlePostTrip}>
+            Add Trip
+          </Button>
           <Button color="gray" onClick={() => setOpenChargesModal(false)}>
             Close
           </Button>
         </DialogActions>
       </Dialog>
 
+      <Dialog open={openTripSuccessDialog} onClose={handleSuccessDailogClose}>
+        <DialogTitle>
+          {tripCreateStatus === "loading"
+            ? "Creating Bill..."
+            : tripCreateStatus === "success"
+              ? "Bill Created Successfully!"
+              : tripCreateStatus === "error"
+                ? "Failed to Create Bill"
+                : ""}
+        </DialogTitle>
 
+        <DialogContent>
+          {tripCreateStatus === "loading" && (
+            <>
+              <DialogContentText>
+                Please wait while we create your bill...
+              </DialogContentText>
+              <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+                <CircularProgress />
+              </Box>
+            </>
+          )}
 
+          {tripCreateStatus === "success" && (
+            <>
+              <DialogContentText>
+                Your bill has been successfully created! with Trip ID:{" "}
+                {createdTripId}
+              </DialogContentText>
+              <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+                <Lottie
+                  animationData={succesTickLottie}
+                  loop={true}
+                  className="flex justify-center items-center w-60 h-auto lg:w-72 lg:h-auto "
+                  alt="grow"
+                />
+              </Box>
+            </>
+          )}
 
-       <Dialog open={openTripSuccessDialog} onClose={handleSuccessDailogClose}>
-              <DialogTitle>
-                {tripCreateStatus === "loading"
-                  ? "Creating Bill..."
-                  : tripCreateStatus === "success"
-                  ? "Bill Created Successfully!"
-                  : tripCreateStatus === "error"
-                  ? "Failed to Create Bill"
-                  : ""}
-              </DialogTitle>
-      
-              <DialogContent>
-                {tripCreateStatus === "loading" && (
-                  <>
-                    <DialogContentText>
-                      Please wait while we create your bill...
-                    </DialogContentText>
-                    <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-                      <CircularProgress />
-                    </Box>
-                  </>
-                )}
-      
-                {tripCreateStatus === "success" && (
-                  <>
-                    <DialogContentText>
-                      Your bill has been successfully created!
-                      with Trip ID: {createdTripId}
-                    </DialogContentText>
-                    <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-                      <Lottie
-                        animationData={succesTickLottie}
-                        loop={true}
-                        className="flex justify-center items-center w-60 h-auto lg:w-72 lg:h-auto "
-                        alt="grow"
-                      />
-                    </Box>
-                  </>
-                )}
-      
-                {tripCreateStatus === "error" && (
-                  <DialogContentText color="error">
-                    Something went wrong. Please try again later.
-                  </DialogContentText>
-                )}
-              </DialogContent>
-      
-              <DialogActions>
-                {tripCreateStatus === "success" && (
-                  <a
-                  href={`/admin/tripsheets/${createdTripId}/pdf-preview`}
-                  className="bg-blue-600 text-white px-4 py-2 rounded mb-4" 
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  
-                  >Print TripSheet</a>
-                )}
-                <Button onClick={handleSuccessDailogClose} autoFocus>
-                  Cancel
-                </Button>
-              </DialogActions>
-            </Dialog>
+          {tripCreateStatus === "error" && (
+            <DialogContentText color="error">
+              Something went wrong. Please try again later.
+            </DialogContentText>
+          )}
+        </DialogContent>
 
+        <DialogActions>
+          {tripCreateStatus === "success" && (
+            <a
+              href={`/admin/tripsheets/${createdTripId}/pdf-preview`}
+              className="bg-blue-600 text-white px-4 py-2 rounded mb-4"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Print TripSheet
+            </a>
+          )}
+          <Button onClick={handleSuccessDailogClose} autoFocus>
+            Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-     {
-      true &&
-      <div>
-      <div className="flex justify-end mx-2  " >
-        <button onClick={handlePrintPdfHtml2Canvas} className="  p-1 px-4 rounded-md text-xl   bg-gradient-to-b from-red-500 to-red-600 text-white focus:ring-2 focus:ring-red-400 hover:shadow-xl transition duration-200     " >Print</button>
-      </div>
-      <div id="pdfContent" ref={pdfComonentRef} className=" p-1 " >
-        
-      <div className=" text-black p-1 border-2 bg-slate-50 w-full  "  >
-               {/* header section */}
-       
-               <div className=" p-2  flex justify-between  " >
-       
-                 <div className="text-xs font-sans font-semibold " >
-                         <div  >
-                            <p className="leading-none" > Contact : 9989989898 </p>
-                            <p className="leading-none" > email : aonjiTransport@mail.com</p>
-                         </div>
-       
-                 </div>
-       
-                 <div className=" flex flex-col items-center "  >
-                     <div  >
-                  <div className="  font-bebas font-bold text-5xl  tracking-[10px]  " >AONJI</div>
-                 
-                  <div className=' text-xs  font-sans font-bold  tracking-[6.5px] mr-[2px] mt-2  ' >TRANSPORT</div>
+      <div className="text-lg font-bold p-2 justify-center text-center mb-4">Trip sheet preview</div>
+
+      {true && (
+        <div>
+          
+          <div id="pdfContent"  className=" p-1 ">
+            <div className=" text-black p-1 border-2 bg-slate-50 w-full  ">
+              {/* header section */}
+
+              <div className=" p-2  flex justify-between  ">
+                <div className="text-xs font-sans font-semibold ">
+                  <div>
+                    <p className="leading-none"> Contact : 9989989898 </p>
+                    <p className="leading-none">
+                      {" "}
+                      email : aonjiTransport@mail.com
+                    </p>
                   </div>
-                  <div className='text-xs font-bold mt-4  ' > Beside New RTC Bustand proddatur,516360. </div>
-                  <div className='' >(letter pad)</div>
-       
-                 </div>
-       
-                 <div  >
-                     
-                     <Image  src={logo}  alt='logo' width={120}   />
-                     
-       
-                 </div>
-     
-       
-               </div>
-                 <div className='bg-black w-full h-[2px] ' ></div>
-                 <div className='flex justify-between mb-2  ' > 
-                     <div className='flex gap-2' >
-                      {/* not clear about agency where.. still has some work to do  */}
-                      <div>Agency:{billsReqBody.agencyName} </div>
-                     <div>Driver's name:{Charges.driverName} </div>
-                     </div>
-                     <div>Date:{dateObj.toLocaleDateString("hi-IN")} </div>
-                 </div>
-       
-             </div>
-             {/* list table here */}
-             <div className=" border-2 border-gray-200 rounded-sm m-1 p-1  " >
-              <div>
-                <Table>
-              <TableHeader>
-                    <TableRow  >
-                           <TableHead  >Sl No.</TableHead>
-                            <TableHead>Bill No.</TableHead>
-                             <TableHead>Consigner</TableHead>
-                             <TableHead>Consignees</TableHead>
-                            <TableHead >Total Lot</TableHead>
-                            <TableHead >Amount</TableHead>
-                            <TableHead >Payment</TableHead>
-                            
-                       </TableRow>
-                     </TableHeader>
-                     <TableBody className='font-Courier_Prime' >
-                      {deliveryBillsList?.map((Bill,index)=>(
-                        <TableRow key={index}   style={ Bill.paymentStatus?null: { backgroundColor:"lightgray",color:"black",}} >
-                          <TableCell  >{index+1}</TableCell>
-                          <TableCell> {Bill.lrNumber}  </TableCell>
-                          <TableCell> {Bill.consigner.name} </TableCell>
-                          <TableCell >{Bill.consignees?.map((c)=>(c.name+", ")||"N/A")}  </TableCell>
-                          <TableCell   >  {Bill.totalNumOfParcels}  </TableCell>
-                          <TableCell> {Bill.totalAmount} </TableCell>
-                          <TableCell  > {Bill.paymentStatus?"paid":"to pay"} </TableCell>
+                </div>
 
-                          
+                <div className=" flex flex-col items-center ">
+                  <div>
+                    <div className="  font-bebas font-bold text-5xl  tracking-[10px]  ">
+                      AONJI
+                    </div>
 
-                        </TableRow>
-                      ))}
-                      </TableBody>
-                      <TableFooter className='font-Courier_Prime' >
-                        <TableRow>
-                          <TableCell colSpan={6} >
-                            Total Amount
-                          </TableCell>
-                          <TableCell >₹{Charges.totalAmount} </TableCell>
-                        </TableRow>
-                        <TableRow>
-                        <TableCell colSpan={6} >Total Unpaid Amount</TableCell>                           
-                          <TableCell >₹{Charges.totalUnpaidAmount} </TableCell>                        
-                        </TableRow>
-                        <TableRow>
-                        <TableCell colSpan={6} >Agent Commision</TableCell>                           
-                          <TableCell >(-) ₹{Charges.agencyCharges.chargeAmount} </TableCell>                        
-                        </TableRow>
-                        
-                       
-                        <TableRow>
-                        <TableCell colSpan={6} >Total Payable Amount</TableCell>                           
-                          <TableCell >₹{Charges.netPayableAmount}/- </TableCell>                        
-                        </TableRow>
-                      </TableFooter>
-                      </Table>
-                     
-              </div>
-              <hr />
-              <div className="flex justify-center md:justify-between gap-20 md:gap-0   mt-16 scale-50 md:scale-100  " >
-              
+                    <div className=" text-xs  font-sans font-bold  tracking-[6.5px] mr-[2px] mt-2  ">
+                      TRANSPORT
+                    </div>
+                  </div>
+                  <div className="text-xs font-bold mt-4  ">
+                    {" "}
+                    Beside New RTC Bustand proddatur,516360.{" "}
+                  </div>
+                  <div className="">(letter pad)</div>
+                </div>
 
-                <div  >
-                  <h1 className="text-center font-bold " >Agency Commision Charges</h1>
-                <Table>
-                    <TableHeader>
-                      <TableRow>
-                      <TableHead> Total Amount </TableHead>
-                      <TableHead>Charge Rate(in %)</TableHead>
-                      <TableHead>Charged Amount</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody className='font-Courier_Prime' >
-                     
-                        <TableRow  >
-                           <TableCell>₹{Charges.totalUnpaidAmount}</TableCell>
-                           <TableCell>{Charges.agencyCharges.chargeRate}% </TableCell>
-                           <TableCell>₹{Charges.agencyCharges.chargeAmount} </TableCell>
-                        </TableRow>
-                     
-                    </TableBody>
-                    <TableFooter className='font-Courier_Prime' >
-        <TableRow>
-          <TableCell colSpan={2}>Total Charge</TableCell>
-          <TableCell >₹{Charges?.agencyCharges.chargeAmount} </TableCell>
-        </TableRow>
-      </TableFooter>
-                  </Table>
-
+                <div>
+                  <Image src={logo} alt="logo" width={120} />
                 </div>
               </div>
+              <div className="bg-black w-full h-[2px] "></div>
+              <div className="flex justify-between mb-2  ">
+                <div className="flex gap-2">
+                  {/* not clear about agency where.. still has some work to do  */}
+                  <div>Agency:{billsReqBody.agencyName} </div>
+                  <div>Driver's name:{Charges.driverName} </div>
+                </div>
+                <div>Date:{dateObj.toLocaleDateString("hi-IN")} </div>
+              </div>
+            </div>
+            {/* list table here */}
+            <div className=" border-2 border-gray-200 rounded-sm m-1 p-1  ">
+              <div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Sl No.</TableHead>
+                      <TableHead>Bill No.</TableHead>
+                      <TableHead>Consigner</TableHead>
+                      <TableHead>Consignees</TableHead>
+                      <TableHead>Total Lot</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Payment</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="font-Courier_Prime">
+                    {deliveryBillsList?.map((Bill, index) => (
+                      <TableRow
+                        key={index}
+                        style={
+                          Bill.paymentStatus
+                            ? null
+                            : { backgroundColor: "lightgray", color: "black" }
+                        }
+                      >
+                        <TableCell>{index + 1}</TableCell>
+                        <TableCell> {Bill.lrNumber} </TableCell>
+                        <TableCell> {Bill.consigner.name} </TableCell>
+                        <TableCell>
+                          {Bill.consignees?.map(
+                            (c) => c.name + ", " || "N/A",
+                          )}{" "}
+                        </TableCell>
+                        <TableCell> {Bill.totalNumOfParcels} </TableCell>
+                        <TableCell> {Bill.totalAmount} </TableCell>
+                        <TableCell>
+                          {" "}
+                          {Bill.paymentStatus ? "paid" : "to pay"}{" "}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                  <TableFooter className="font-Courier_Prime">
+                    <TableRow>
+                      <TableCell colSpan={6}>Total Amount</TableCell>
+                      <TableCell>₹{Charges.totalAmount} </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell colSpan={6}>Total Unpaid Amount</TableCell>
+                      <TableCell>₹{Charges.totalUnpaidAmount} </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell colSpan={6}>Agent Commision</TableCell>
+                      <TableCell>
+                        (-) ₹{Charges.agencyCharges.chargeAmount}{" "}
+                      </TableCell>
+                    </TableRow>
 
-
-
-
-             </div>
-             
-     
-     
-
-
-    </div>
-    </div>
-     }
-
-     
-
-
+                    <TableRow>
+                      <TableCell colSpan={6}>Total Payable Amount</TableCell>
+                      <TableCell>₹{Charges.netPayableAmount}/- </TableCell>
+                    </TableRow>
+                  </TableFooter>
+                </Table>
+              </div>
+              <hr />
+              <div className="flex justify-center md:justify-between gap-20 md:gap-0   mt-16 scale-50 md:scale-100  ">
+                <div>
+                  <h1 className="text-center font-bold ">
+                    Agency Commision Charges
+                  </h1>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead> Total Amount </TableHead>
+                        <TableHead>Charge Rate(in %)</TableHead>
+                        <TableHead>Charged Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="font-Courier_Prime">
+                      <TableRow>
+                        <TableCell>₹{Charges.totalUnpaidAmount}</TableCell>
+                        <TableCell>
+                          {Charges.agencyCharges.chargeRate}%{" "}
+                        </TableCell>
+                        <TableCell>
+                          ₹{Charges.agencyCharges.chargeAmount}{" "}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                    <TableFooter className="font-Courier_Prime">
+                      <TableRow>
+                        <TableCell colSpan={2}>Total Charge</TableCell>
+                        <TableCell>
+                          ₹{Charges?.agencyCharges.chargeAmount}{" "}
+                        </TableCell>
+                      </TableRow>
+                    </TableFooter>
+                  </Table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

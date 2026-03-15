@@ -6,11 +6,11 @@ export const useLoadStatementsStore = create((set, get) => ({
   error: null,
 
   // ✅ Fetch statements by agency
- fetchLoadStatements: async (agencyId, filters = {}) => {
+ fetchLoadStatements: async (branchId, filters = {}) => {
   try {
     set({ loading: true });
     const params = new URLSearchParams({
-      agency: agencyId,
+      branch: branchId,
       month: filters.month || "",
       year: filters.year || "",
       paymentStatus:

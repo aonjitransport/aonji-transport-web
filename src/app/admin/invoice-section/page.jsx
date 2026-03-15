@@ -1,107 +1,134 @@
 "use client";
 
-import React, { useState,useRef,useEffect, use } from "react";
-import Checkbox from '@mui/material/Checkbox';
-import TextField from '@mui/material/TextField';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import InputAdornment from '@mui/material/InputAdornment';
-import FormGroup from '@mui/material/FormGroup';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import  Button from '@mui/material/Button';  
-import Select from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
+import React, { useState, useRef, useEffect, use } from "react";
+import Checkbox from "@mui/material/Checkbox";
+import TextField from "@mui/material/TextField";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import InputAdornment from "@mui/material/InputAdornment";
+import FormGroup from "@mui/material/FormGroup";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Button from "@mui/material/Button";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
 
-import Autocomplete from '@mui/material/Autocomplete';
-import CircularProgress from '@mui/material/CircularProgress';
-
-
-  
+import Autocomplete from "@mui/material/Autocomplete";
+import CircularProgress from "@mui/material/CircularProgress";
 
 import Lottie from "lottie-react";
-import { MdDelete,MdAddBox } from "react-icons/md";
+import { MdDelete, MdAddBox } from "react-icons/md";
 import { IoMdAddCircle } from "react-icons/io";
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogTitle from '@mui/material/DialogTitle';
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
 
-import Box from '@mui/material/Box';
+import Box from "@mui/material/Box";
 import { FaCircleXmark } from "react-icons/fa6";
-import {successTick} from "../../../../public/assets/animations/success_tick.json"
-import {succesTickLottie} from "../../../../public/assets/animations/success_tick_lottie.json"
+import { successTick } from "../../../../public/assets/animations/success_tick.json";
+import { succesTickLottie } from "../../../../public/assets/animations/success_tick_lottie.json";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
-import "./animations.css"; 
+import "./animations.css";
 import { AlertComponent } from "../../../components/Alert";
-import { useAgencyStore } from "../../../store/agencyStore";
+
 import useBillsStore from "../../../store/billsStore";
 import { useAuthStore } from "../../../store/useAuthStore";
+import useBranchStore from "../../../store/branchStore";
 import { pdf, PDFDownloadLink } from "@react-pdf/renderer";
-import BillPdfDocument from "./components/BillPdfDocument"
+import BillPdfDocument from "./components/BillPdfDocument";
 import {
   Table,
   TableHeader,
   TableBody,
   TableColumn,
   TableRow,
-  TableCell
+  TableCell,
 } from "@nextui-org/table";
 import { PDFViewer } from "@react-pdf/renderer";
 
-
-
-
-
 const InvoicePage = () => {
+  const user = useAuthStore((state) => state.user);
+  const fetchMe = useAuthStore((state) => state.fetchMe);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
+  useEffect(() => {
+  if (hasHydrated && !user) {
+    fetchMe();
+  }
+  }, [hasHydrated, user, fetchMe]);
 
-  const Admin = useAuthStore((state)=>state.user?.name||"Admininistrator")
+  const fromBranch = user?.branchId;
+  const userId = user?.id;
+  const [branchesOfSelectedArea, setBranchesOfSelectedArea] = useState([  ]);;
 
-  const {createBill,loadingToCreateBill,billCreateStatus,billResponse}= useBillsStore()
+ 
+
+
+
+  const { createBill, loadingToCreateBill, billCreateStatus, billResponse } =
+    useBillsStore();
   const currentPrintBill = useBillsStore((state) => state.billResponse);
 
   const [createBillResponse, setCreateBillResponse] = useState(null);
- 
+
   const [billCreated, setBillCreated] = useState(false);
 
   const refs = useRef([]);
-  const fetchAgencies = useAgencyStore((state)=>state.fetchAgencies)
-  const agencies = useAgencyStore((state)=>state.agencies)
   
-  
-  
-
-  
+  const branches = useBranchStore((state) => state.branches);
 
   const [perticularConsigneeDetails, setPerticularConsigneeDetails] = useState([
-    {  numOfParcels: "", type: "", name: "",address:"",phone:"",amount:"" },
+    {
+      numOfParcels: "",
+      type: "",
+      name: "",
+      address: "",
+      phone: "",
+      amount: "",
+    },
   ]);
 
-  const [consignerDetails,setConsignerDetails]= useState({
-    name:"",phone:"",address:""
-  })
+  const [consignerDetails, setConsignerDetails] = useState({
+    name: "",
+    phone: "",
+    address: "",
+  });
 
-  const [agency,setAgency]=useState({
-    name:"",phone:"",address:"",_id:""
-  })
+
+
+  const [branchDetails, setBranchDetails] = useState({
+    _id: "",
+    name: "",
+    phone: "",
+    address: "",
+    city: "",
+  });
+
   
-  const [agenciesOfSelectedArea, setAgenciesOfSelectedArea] = useState([]);
 
-  const date = new Date
- 
-  const [alertFlag,setAlertFlag] = useState(false)
+  const date = new Date();
+
+  const [alertFlag, setAlertFlag] = useState(false);
   const [openSuccessDialog, setOpenSuccessDialog] = useState(false);
-
 
   const handleAddField = () => {
     setPerticularConsigneeDetails([
       ...perticularConsigneeDetails,
-      { numOfParcels: "", type: "", name: "",address:"",phone:"",amount:""  },
+      {
+        numOfParcels: "",
+        type: "",
+        name: "",
+        address: "",
+        phone: "",
+        amount: "",
+      },
     ]);
   };
 
   const handleRemoveField = (index) => {
-    const updatedDetails = perticularConsigneeDetails.filter((_, i) => i !== index);
+    const updatedDetails = perticularConsigneeDetails.filter(
+      (_, i) => i !== index
+    );
     setPerticularConsigneeDetails(updatedDetails);
   };
 
@@ -111,64 +138,72 @@ const InvoicePage = () => {
     setPerticularConsigneeDetails(updatedDetails);
   };
 
-  
+  const [bill, setBill] = useState({
+    date: date.toLocaleDateString("hi-IN"),
+   
+    to: "",
 
-  const [bill,setBill] = useState({
-    
-    date:date.toLocaleDateString("hi-IN"),
-    from:"proddatur",
-    to:"",
-    
-    consigner:consignerDetails,
-    totalNumOfParcels:"",
-    totalAmount:"",
-    paymentStatus:false,
-    deliveryStatus:false,
-    doorDelivery:false,
-    consignees:perticularConsigneeDetails,
-    agency:agency,
-    administrator:Admin,
-    
-    description:""
+    consigner: consignerDetails,
+    totalNumOfParcels: "",
+    totalAmount: "",
+    paymentStatus: false,
+    deliveryStatus: false,
+    doorDelivery: false,
+    consignees: perticularConsigneeDetails,
 
-    
-  })
-  
- useEffect(()=>{
-  async function fetchData() {
-    const r = await fetchAgencies()
-  }
-  fetchData()
- },[])
+    fromBranch: null ,
+    toBranch: null ,
+
+    description: "",
+  });
 
   useEffect(() => {
-    
-
-    const totalAmount = bill.consignees.reduce((accumlator,item)=>accumlator+ (parseFloat(item.amount)||0)  ,0)
-    const totalParcels = bill.consignees.reduce((accumlator,item)=>accumlator+ (parseFloat(item.numOfParcels)||0)  ,0)
-    
-    
-
-    setBill((prevBill) => ({ ...prevBill,totalAmount:totalAmount,totalNumOfParcels:totalParcels, consignees: perticularConsigneeDetails ,consigner:consignerDetails}));
-      
-    
-  }, [perticularConsigneeDetails,consignerDetails,bill.consignees]);
+  if (user?.branchId) {
+    setBill((prev) => ({
+      ...prev,
+      fromBranch: user.branchId,
+    }));
+  }
+}, [user]);
 
 
+  
+ 
+  
+
+  useEffect(() => { 
+      async function fetchBranches() {
+        const r = await useBranchStore.getState().fetchBranches();
+      } 
+      fetchBranches();
+  }, []);
+
+  useEffect(() => {
+    const totalAmount = bill.consignees.reduce(
+      (accumlator, item) => accumlator + (parseFloat(item.amount) || 0),
+      0
+    );
+    const totalParcels = bill.consignees.reduce(
+      (accumlator, item) => accumlator + (parseFloat(item.numOfParcels) || 0),
+      0
+    );
+
+    setBill((prevBill) => ({
+      ...prevBill,
+      totalAmount: totalAmount,
+      totalNumOfParcels: totalParcels,
+      consignees: perticularConsigneeDetails,
+      consigner: consignerDetails,
+    }));
+  }, [perticularConsigneeDetails, consignerDetails, bill.consignees]);
 
   const handleBillInputChange = (name, value) => {
     setBill((prevBill) => ({ ...prevBill, [name]: value }));
   };
 
-  const handleConsignerDetailsInputChange = (name,value)=>{
-      setConsignerDetails((prevBill)=>({...prevBill,[name]:value}))
-  }
-
-
-
- 
-
- ;
+  const handleConsignerDetailsInputChange = (name, value) => {
+    setConsignerDetails((prevBill) => ({ ...prevBill, [name]: value }));
+  };
 
   const columns = [
     {
@@ -187,73 +222,75 @@ const InvoicePage = () => {
       id: "adress",
       label: "Address",
     },
-   
   ];
 
+  useEffect(() => {
+    const fetchBranchesBySelectedArea = async () => {
+      const branches = await useBranchStore
+        .getState()
+        .getBranchesByServiceArea(bill.to);
+      console.log("Branches of selected area:", branches);
 
 
+       const filteredBranches = branches.filter(
+      (branch) => !branch.adminIds?.includes(userId)
+    );
 
+      setBranchesOfSelectedArea(filteredBranches);
 
-useEffect(() => {
-  const fetchAgencies = async () => {
-    const agenciesOfSelectedArea = await useAgencyStore.getState().getAgenciesByArea(bill.to);
-    console.log("Agencies of selected area:", agenciesOfSelectedArea);
-    setAgenciesOfSelectedArea(agenciesOfSelectedArea);
-  };
-
-  fetchAgencies();
-}, [bill.to]);
-
-
-const handleSubmit = async () => {
-  // post new bill
+     
+    };
+    fetchBranchesBySelectedArea();
+  }, [bill.to]);
   
+
   
+  const handleSubmit = async () => {
+    // post new bill
 
-  const res = await createBill(bill);
+    const res = await createBill(bill);
 
-  setCreateBillResponse(res);
+    setCreateBillResponse(res);
 
-    if(res) setOpenSuccessDialog(true);
-  
+    if (res) setOpenSuccessDialog(true);
 
     if (res) setBillCreated(true);
     else setBillCreated(false);
-  console.log("bill submit",bill)
- console.log("API response:", res);
-};
+    console.log("bill submit", bill);
+    console.log("API response:", res);
+  };
 
-const printLR =  () => {
+  const printLR = () => {
+    console.log("Printing LR for bill:", createBillResponse);
+  };
+
+  const parcelTypes = [
+    "N/A",
+    "AC",
+    "Air Cooler",
+    "Tyres",
+    "Refridgerator",
+    "Plastic bag",
+    "Medical box",
+    "Gunny bag",
+  ];
   
-  console.log("Printing LR for bill:", createBillResponse);
+  const [serviceAreas, setServiceAreas] = useState([]);
 
-
-
-};
-
-
-
-
-
-
-const parcelTypes = ["N/A","AC","Air Cooler","Tyres","Refridgerator","Plastic bag","Medical box","Gunny bag",]
-const [areas, setAreas] = useState([]);
-
-
-const fetchAllAreas = () => {
-
-  const areas = agencies.map ((agency) => agency.serviceAreas).flat();
-  const uniqueAreas = [...new Set(areas)];  
-
-  setAreas (uniqueAreas);
-  console.log("Fetched areas:", uniqueAreas);
   
 
-}
+  useEffect(() => {
+  async function loadAreas() {
+    const res = await fetch("/api/branches/exclude-user-service-areas");
+    const data = await res.json();
+    setServiceAreas(data.areas || []);
+    console.log("Service areas loaded:", data.areas);
+  }
 
-useEffect(() => {
-  fetchAllAreas();  
-}, [agencies]);
+  loadAreas();
+}, []);
+
+  
 
   const [consignorInputValue, setConsignorInputValue] = useState("");
   const [options, setOptions] = useState([]);
@@ -262,12 +299,9 @@ useEffect(() => {
   const [open, setOpen] = useState(false);
   const [printLrDialogOpen, setPrintLrDialogOpen] = useState(false);
 
-
   const [consigneeInputValues, setConsigneeInputValues] = useState({});
   const [consigneeOptions, setConsigneeOptions] = useState({});
   const [consigneeLoading, setConsigneeLoading] = useState({});
-
- 
 
   useEffect(() => {
     if (consignorInputValue.trim() === "") {
@@ -292,144 +326,156 @@ useEffect(() => {
     };
   }, [consignorInputValue]);
 
-// 🔹 When selecting from dropdown OR typing manually
-const handleSelectConsigner = (event, newValue) => {
-  // Case 1: selected from dropdown (object)
-  if (newValue && typeof newValue === "object") {
-    setSelectedConsigner(newValue);
+  // 🔹 When selecting from dropdown OR typing manually
+  const handleSelectConsigner = (event, newValue) => {
+    // Case 1: selected from dropdown (object)
+    if (newValue && typeof newValue === "object") {
+      setSelectedConsigner(newValue);
 
-    setConsignerDetails({
-      name: newValue.name || "",
-      phone: newValue.phone || "",
-      address: newValue.address || "",
-    });
-    return;
-  }
+      setConsignerDetails({
+        name: newValue.name || "",
+        phone: newValue.phone || "",
+        address: newValue.address || "",
+      });
+      return;
+    }
 
-  // Case 2: user typed manually (string)
-  if (typeof newValue === "string") {
-    setSelectedConsigner({ name: newValue });
+    // Case 2: user typed manually (string)
+    if (typeof newValue === "string") {
+      setSelectedConsigner({ name: newValue });
 
-    setConsignerDetails({
-      name: newValue,
-      phone: "",
-      address: "",
-    });
-  }
-};
+      setConsignerDetails({
+        name: newValue,
+        phone: "",
+        address: "",
+      });
+    }
+  };
 
-const fetchConsigneeSuggestions = async (index, search, area) => {
-  try {
-    if (!search || !area) {
+  const fetchConsigneeSuggestions = async (index, search, area) => {
+    try {
+      if (!search || !area) {
+        setConsigneeOptions((prev) => ({
+          ...prev,
+          [index]: [],
+        }));
+        return;
+      }
+
+      const res = await fetch(
+        `/api/consignees/search?search=${encodeURIComponent(
+          search
+        )}&area=${encodeURIComponent(area)}`
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch consignees");
+      }
+
+      const data = await res.json();
+
+      setConsigneeOptions((prev) => ({
+        ...prev,
+        [index]: Array.isArray(data) ? data : [],
+      }));
+    } catch (error) {
+      console.error("Error fetching consignee suggestions:", error);
       setConsigneeOptions((prev) => ({
         ...prev,
         [index]: [],
       }));
+    }
+  };
+  ``;
+
+  const handleSelectConsignee = (index, newValue) => {
+    // Selected from dropdown
+    if (newValue && typeof newValue === "object") {
+      handlePerticularConsigneeDetailsInputChange(
+        index,
+        "name",
+        newValue.name || ""
+      );
+      handlePerticularConsigneeDetailsInputChange(
+        index,
+        "phone",
+        newValue.phone || ""
+      );
+      handlePerticularConsigneeDetailsInputChange(
+        index,
+        "address",
+        newValue.address || ""
+      );
       return;
     }
 
-    const res = await fetch(
-      `/api/consignees/search?search=${encodeURIComponent(search)}&area=${encodeURIComponent(area)}`
-    );
-
-    if (!res.ok) {
-      throw new Error("Failed to fetch consignees");
+    // Typed manually
+    if (typeof newValue === "string") {
+      handlePerticularConsigneeDetailsInputChange(index, "name", newValue);
     }
-
-    const data = await res.json();
-
-    setConsigneeOptions((prev) => ({
-      ...prev,
-      [index]: Array.isArray(data) ? data : [],
-    }));
-  } catch (error) {
-    console.error("Error fetching consignee suggestions:", error);
-    setConsigneeOptions((prev) => ({
-      ...prev,
-      [index]: [],
-    }));
-  }
-};
-``
-
-
-
-
-
-const handleSelectConsignee = (index, newValue) => {
-  // Selected from dropdown
-  if (newValue && typeof newValue === "object") {
-    handlePerticularConsigneeDetailsInputChange(index, "name", newValue.name || "");
-    handlePerticularConsigneeDetailsInputChange(index, "phone", newValue.phone || "");
-    handlePerticularConsigneeDetailsInputChange(index, "address", newValue.address || "");
-    return;
-  }
-
-  // Typed manually
-  if (typeof newValue === "string") {
-    handlePerticularConsigneeDetailsInputChange(index, "name", newValue);
-  }
-};
-
+  };
 
   const handleSuccessDailogClose = () => {
     setOpenSuccessDialog(false);
 
-     // 🔹 Reset all sub-states first
-  setConsignerDetails({
-    name: "",
-    phone: "",
-    address: "",
-  });
+    // 🔹 Reset all sub-states first
+    setConsignerDetails({
+      name: "",
+      phone: "",
+      address: "",
+    });
 
-  setConsignorInputValue("");
-  setConsigneeInputValues({});
+    setConsignorInputValue("");
+    setConsigneeInputValues({});
+
   
 
-  setAgency({
-    name: "",
-    phone: "",
-    address: "",
-    _id: "",
-  });
-
-   setPerticularConsigneeDetails([
-    { numOfParcels: "", type: "", name: "", address: "", phone: "", amount: "" },
-  ]);
-
+    setPerticularConsigneeDetails([
+      {
+        numOfParcels: "",
+        type: "",
+        name: "",
+        address: "",
+        phone: "",
+        amount: "",
+      },
+    ]);
 
     // 🔹 Then reset the main bill state
-  const date = new Date();
-  setBill({
-    date: date.toLocaleDateString("hi-IN"),
-    from: "proddatur",
-    to: "",
-    consigner: { name: "", phone: "", address: "" },
-    totalNumOfParcels: "",
-    totalAmount: "",
-    paymentStatus: false,
-    deliveryStatus: false,
-    doorDelivery: false,
-    consignees: [
-      { numOfParcels: "", type: "", name: "", address: "", phone: "", amount: "" },
-    ],
-    agency: { name: "", phone: "", address: "", _id: "" },
-    administrator: Admin,
-    description: "",
-  });
+    const date = new Date();
+    setBill({
+      date: date.toLocaleDateString("hi-IN"),
+     
+      to: "",
+      consigner: { name: "", phone: "", address: "" },
+      totalNumOfParcels: "",
+      totalAmount: "",
+      paymentStatus: false,
+      deliveryStatus: false,
+      doorDelivery: false,
+      consignees: [
+        {
+          numOfParcels: "",
+          type: "",
+          name: "",
+          address: "",
+          phone: "",
+          amount: "",
+        },
+      ],
+      fromBranch: fromBranch,
+      toBranch: null,
+      description: "",
+    });
 
     setBillCreated(false);
   };
-
-
-
 
   return (
     <>
       {alertFlag ? (
         <AlertComponent
-          color={"warning"}
-          messageHead={"Check Parcels!"}
+          severity={"warning"}
           message={"Check Total and Perticular's parcels before submiting..."}
         />
       ) : (
@@ -446,7 +492,7 @@ const handleSelectConsignee = (index, newValue) => {
             <div className="  col-span-3 ">
               <Autocomplete
                 fullWidth
-                options={areas} // ✅ your area list
+                options={serviceAreas} // ✅ your area list
                 value={bill.to || ""} // ✅ controlled value
                 onChange={(event, newValue) =>
                   handleBillInputChange("to", newValue)
@@ -460,33 +506,41 @@ const handleSelectConsignee = (index, newValue) => {
 
             <div className="col-span-3">
               <FormControl fullWidth>
-                <InputLabel id="demo-simple-select-label">agency</InputLabel>
+                <InputLabel id="demo-simple-select-label">Branch</InputLabel>
                 <Select
                   labelId="demo-simple-select-label"
                   id="demo-simple-select"
-                  value={bill.agency.name}
-                  label="agency"
+                  value={bill.toBranch || ""}
+                  label="Branch"
+                  onClick={(e) => {
+                    console.log("from branch id ", fromBranch,"user id ", userId);
+                  }}
                   onChange={(e) => {
-                    const selectedAgency = agenciesOfSelectedArea?.find(
-                      (agency) => agency.name === e.target.value
+                    const branchId = e.target.value;
+
+                    setBill((prev) => ({
+                      ...prev,
+                      toBranch: branchId,
+                    }));
+
+                    const selectedBranch = branchesOfSelectedArea.find(
+                      (b) => b._id === branchId
                     );
-                    if (selectedAgency) {
-                      setAgency({
-                        name: selectedAgency.name,
-                        phone: selectedAgency.phone,
-                        address: selectedAgency.address,
-                        _id: selectedAgency._id,
+
+                    if (selectedBranch) {
+                      setBranchDetails({
+                        _id: selectedBranch._id,
+                        name: selectedBranch.name,
+                        phone: selectedBranch.phone,
+                        address: selectedBranch.address,
+                        city: selectedBranch.city,
                       });
-                      handleBillInputChange("agency", selectedAgency);
-                    } else {
-                      setAgency({ name: "", phone: "", address: "", _id: "" });
-                      handleBillInputChange("agency", {});
                     }
                   }}
                 >
-                  {agenciesOfSelectedArea?.map((agency, index) => (
-                    <MenuItem key={index} value={agency.name}>
-                      {agency.name} - {agency.phone}
+                  {branchesOfSelectedArea.map((branch) => (
+                    <MenuItem key={branch._id} value={branch._id}>
+                      {branch.name} – {branch.phone}
                     </MenuItem>
                   ))}
                 </Select>
@@ -496,45 +550,45 @@ const handleSelectConsignee = (index, newValue) => {
 
           <div className="grid  grid-cols-6 gap-2 h-16 ">
             <div className="col-span-2">
-            <Autocomplete
-  freeSolo
-  open={open}
-  onOpen={() => setOpen(true)}
-  onClose={() => setOpen(false)}
-  options={options}
-  getOptionLabel={(option) => option.name || ""}
-  loading={loading}
-  value={selectedConsigner}
-  onChange={handleSelectConsigner}
-  inputValue={consignorInputValue}
-  onInputChange={(event, newValue) => {
-    setConsignorInputValue(newValue);
+              <Autocomplete
+                freeSolo
+                open={open}
+                onOpen={() => setOpen(true)}
+                onClose={() => setOpen(false)}
+                options={options}
+                getOptionLabel={(option) => option.name || ""}
+                loading={loading}
+                value={selectedConsigner}
+                onChange={handleSelectConsigner}
+                inputValue={consignorInputValue}
+                onInputChange={(event, newValue) => {
+                  setConsignorInputValue(newValue);
 
-    // 🔥 update state immediately while typing
-    setConsignerDetails(prev => ({
-      ...prev,
-      name: newValue
-    }));
-  }}
-  renderInput={(params) => (
-    <TextField
-      {...params}
-      label="Consigner"
-      variant="outlined"
-      InputProps={{
-        ...params.InputProps,
-        endAdornment: (
-          <>
-            {loading ? <CircularProgress color="inherit" size={20} /> : null}
-            {params.InputProps.endAdornment}
-          </>
-        ),
-      }}
-    />
-  )}
-/>
-
-              
+                  // 🔥 update state immediately while typing
+                  setConsignerDetails((prev) => ({
+                    ...prev,
+                    name: newValue,
+                  }));
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Consigner"
+                    variant="outlined"
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {loading ? (
+                            <CircularProgress color="inherit" size={20} />
+                          ) : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+              />
             </div>
 
             <div className="col-span-1">
@@ -608,8 +662,7 @@ const handleSelectConsignee = (index, newValue) => {
             </div>
 
             <div className="  col-span-2   ">
-
-              <FormGroup  row >
+              <FormGroup row>
                 <FormControlLabel
                   control={
                     <Checkbox
@@ -663,59 +716,70 @@ const handleSelectConsignee = (index, newValue) => {
                     {/* Add and Remove Buttons */}
                     {/* consignee */}
                     <div className="col-span-2">
+                      <Autocomplete
+                        freeSolo
+                        fullWidth
+                        options={consigneeOptions[index] || []}
+                        // 🔥 Display as "Name - Phone"
+                        getOptionLabel={(option) =>
+                          typeof option === "string"
+                            ? option
+                            : `${option.name} - ${option.phone}`
+                        }
+                        // 🔥 KEY FIX: phone-based identity
+                        isOptionEqualToValue={(option, value) =>
+                          option.phone === value.phone
+                        }
+                        value={null} // important
+                        onChange={(event, newValue) => {
+                          if (newValue && typeof newValue === "object") {
+                            handlePerticularConsigneeDetailsInputChange(
+                              index,
+                              "name",
+                              newValue.name
+                            );
+                            handlePerticularConsigneeDetailsInputChange(
+                              index,
+                              "phone",
+                              newValue.phone
+                            );
+                            handlePerticularConsigneeDetailsInputChange(
+                              index,
+                              "address",
+                              newValue.address
+                            );
+                          }
 
-                     <Autocomplete
-  freeSolo
-  fullWidth
-  options={consigneeOptions[index] || []}
+                          if (typeof newValue === "string") {
+                            handlePerticularConsigneeDetailsInputChange(
+                              index,
+                              "name",
+                              newValue
+                            );
+                          }
+                        }}
+                        onInputChange={(event, newInputValue) => {
+                          handlePerticularConsigneeDetailsInputChange(
+                            index,
+                            "name",
+                            newInputValue
+                          );
 
-  // 🔥 Display as "Name - Phone"
-  getOptionLabel={(option) =>
-    typeof option === "string"
-      ? option
-      : `${option.name} - ${option.phone}`
-  }
-
-  // 🔥 KEY FIX: phone-based identity
-  isOptionEqualToValue={(option, value) =>
-    option.phone === value.phone
-  }
-
-  value={null} // important
-
-  onChange={(event, newValue) => {
-    if (newValue && typeof newValue === "object") {
-      handlePerticularConsigneeDetailsInputChange(index, "name", newValue.name);
-      handlePerticularConsigneeDetailsInputChange(index, "phone", newValue.phone);
-      handlePerticularConsigneeDetailsInputChange(index, "address", newValue.address);
-    }
-
-    if (typeof newValue === "string") {
-      handlePerticularConsigneeDetailsInputChange(index, "name", newValue);
-    }
-  }}
-
-  onInputChange={(event, newInputValue) => {
-    handlePerticularConsigneeDetailsInputChange(
-      index,
-      "name",
-      newInputValue
-    );
-
-    // 🔥 pass selected TO (area)
-    fetchConsigneeSuggestions(index, newInputValue, bill.to);
-  }}
-
-  renderInput={(params) => (
-    <TextField
-      {...params}
-      variant="filled"
-      label="Consignee Name"
-    />
-  )}
-/>
-
-
+                          // 🔥 pass selected TO (area)
+                          fetchConsigneeSuggestions(
+                            index,
+                            newInputValue,
+                            bill.to
+                          );
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            variant="filled"
+                            label="Consignee Name"
+                          />
+                        )}
+                      />
                     </div>
                     {/* consignee phone */}
                     <div className="col-span-2">
@@ -759,24 +823,26 @@ const handleSelectConsignee = (index, newValue) => {
                     {/* Type */}
                     <div className="col-span-2">
                       <Autocomplete
-                fullWidth
-                options={parcelTypes} // ✅ your area list
-                value={ perticularConsigneeDetails[index].type || ""} // ✅ controlled value
-                onChange={(event, newValue) =>
-                  handlePerticularConsigneeDetailsInputChange(
-                    index,
-                    "type",
-                    newValue
-                  )
-                }
-                renderInput={(params) => (
-                  <TextField {...params} label="Type" variant="outlined" />
-                )}
-                clearOnEscape
-              />
-                      
+                        fullWidth
+                        options={parcelTypes} // ✅ your area list
+                        value={perticularConsigneeDetails[index].type || ""} // ✅ controlled value
+                        onChange={(event, newValue) =>
+                          handlePerticularConsigneeDetailsInputChange(
+                            index,
+                            "type",
+                            newValue
+                          )
+                        }
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Type"
+                            variant="outlined"
+                          />
+                        )}
+                        clearOnEscape
+                      />
                     </div>
-
 
                     {/* amount */}
                     <div className="col-span-1">
@@ -939,7 +1005,6 @@ const handleSelectConsignee = (index, newValue) => {
             <>
               <DialogContentText>
                 Please wait while we create your bill...
-                
               </DialogContentText>
               <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
                 <CircularProgress />
@@ -950,8 +1015,8 @@ const handleSelectConsignee = (index, newValue) => {
           {billCreateStatus === "success" && (
             <>
               <DialogContentText>
-                Your bill has been successfully created!
-                with Bill No: {createBillResponse ? createBillResponse.lrNumber : ""}
+                Your bill has been successfully created! with Bill No:{" "}
+                {createBillResponse ? createBillResponse.lrNumber : ""}
               </DialogContentText>
               <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
                 <Lottie
@@ -975,17 +1040,24 @@ const handleSelectConsignee = (index, newValue) => {
           {billCreateStatus === "success" && (
             <Button>
               <PDFDownloadLink
-                document={<BillPdfDocument bill={currentPrintBill} />}
-                fileName={`LR_${createBillResponse ? createBillResponse.lrNumber : "bill"}.pdf`}
+                document={<BillPdfDocument bill={createBillResponse} />}
+                fileName={`LR_${
+                  createBillResponse ? createBillResponse.lrNumber : "bill"
+                }.pdf`}
               >
                 Download LR
               </PDFDownloadLink>
-              
             </Button>
           )}
           {billCreateStatus === "success" && (
-            
-            <Button onClick={()=>{setPrintLrDialogOpen(true),console.log("current bill",currentPrintBill)}}>Print LR</Button>
+            <Button
+              onClick={() => {
+                setPrintLrDialogOpen(true),
+                  console.log("current bill", currentPrintBill);
+              }}
+            >
+              Print LR
+            </Button>
           )}
           <Button onClick={handleSuccessDailogClose} autoFocus>
             Cancel
@@ -993,25 +1065,25 @@ const handleSelectConsignee = (index, newValue) => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={printLrDialogOpen} onClose={() => setPrintLrDialogOpen(false)} maxWidth="md" fullWidth>
-
+      <Dialog
+        open={printLrDialogOpen}
+        onClose={() => setPrintLrDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
         <DialogTitle>Print LR</DialogTitle>
         <DialogContent>
           {/* PDF Preview Component */}
-          {printLrDialogOpen  && (
-            <PDFViewer style={{ width: '100%', height: '80vh' }}>
-            <BillPdfDocument bill={currentPrintBill} />
+          {printLrDialogOpen && (
+            <PDFViewer style={{ width: "100%", height: "80vh" }}>
+              <BillPdfDocument bill={createBillResponse} />
             </PDFViewer>
           )}
-         
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPrintLrDialogOpen(false)}>Close</Button>
         </DialogActions>
-
       </Dialog>
-
-
     </>
   );
 };
