@@ -1,9 +1,10 @@
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "../../../../lib/mongodb";
 import { Bill } from "../../../../models/Bill";
 
 // 🔍 Search consigners dynamically
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     await connectToDatabase();
 

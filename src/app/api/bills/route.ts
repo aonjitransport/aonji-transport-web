@@ -110,7 +110,10 @@ if (user.role === "super_admin") {
   else if (direction === "INCOMING") {
     filter.toBranch = userBranchId;
 
-    if (fromBranch) filter.fromBranch = fromBranch; // optional source filter
+    // ✅ apply selected agency filter properly
+  if (toBranch) {
+    filter.fromBranch = toBranch; // 👈 THIS IS THE FIX
+  }
   } 
   
   else {

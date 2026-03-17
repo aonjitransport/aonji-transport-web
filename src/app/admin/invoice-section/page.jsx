@@ -26,8 +26,8 @@ import DialogTitle from "@mui/material/DialogTitle";
 
 import Box from "@mui/material/Box";
 import { FaCircleXmark } from "react-icons/fa6";
-import { successTick } from "../../../../public/assets/animations/success_tick.json";
-import { succesTickLottie } from "../../../../public/assets/animations/success_tick_lottie.json";
+import successTick  from "../../../../public/assets/animations/success_tick.json";
+import  succesTickLottie  from "../../../../public/assets/animations/success_tick_lottie.json";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import "./animations.css";
 import { AlertComponent } from "../../../components/Alert";

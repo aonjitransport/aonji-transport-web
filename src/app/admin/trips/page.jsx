@@ -112,7 +112,7 @@ const downloadTripPDF = async (trip) => {
         return date.toLocaleDateString("en-GB");
       },
       sortable: true, filter: true },  
-    { headerName: "Branch", field: "destinationBranch.name", sortable: true, filter: true },
+    { headerName: "Branch", valueGetter: (params) => params.data?.destinationBranch?.name || "", sortable: true, filter: true },
    
     { headerName: "Qty", field: "totalArticels", sortable: true, filter: true },
     { headerName: "Amount", field: "totalAmount", sortable: true, filter: true },
@@ -152,7 +152,7 @@ const downloadTripPDF = async (trip) => {
 
 
   useEffect(() => {
-    const newYears = getYearsFromYearToCurrent(2020);
+    const newYears = getYearsFromYearToCurrent(2024);
     setYears(newYears);
 
     handleReqBodyInputChange("month", months[dateObj.getMonth()]);

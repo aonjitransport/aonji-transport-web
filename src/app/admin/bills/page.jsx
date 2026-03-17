@@ -57,7 +57,7 @@ import jsPDF from 'jspdf'
 import { useBreakpoint } from "./hooks/useBreakPoint";
 
 import logo from "../../../../public/ANJITLOGOBLACK.svg"
-import {succesTickLottie} from "../../../../public/assets/animations/success_tick_lottie.json"
+import succesTickLottie from "../../../../public/assets/animations/success_tick_lottie.json"
 import Image from 'next/image'
 
 import { Dialog, DialogActions, DialogContent, DialogTitle, Select, TextField,DialogContentText } from "@mui/material";
@@ -256,18 +256,20 @@ const DataGrid = () => {
  const fetchFilteredBills = async (filters) => {
   const cleanedFilters = { ...filters };
 
-  // Remove incorrect branch filter depending on direction
   if (cleanedFilters.direction === "INCOMING") {
     delete cleanedFilters.fromBranch;
   }
 
-  if (cleanedFilters.direction === "OUTGOING") {
-    delete cleanedFilters.toBranch;
-  }
+  // ❌ REMOVE THIS BLOCK
+  // if (cleanedFilters.direction === "OUTGOING") {
+  //   delete cleanedFilters.toBranch;
+  // }
 
   const params = new URLSearchParams(
     Object.entries(cleanedFilters).filter(([_, v]) => v !== "" && v !== null)
   );
+
+  console.log("API PARAMS:", params.toString()); // 👈 DEBUG
 
   const res = await fetch(`/api/bills?${params.toString()}`);
   const data = await res.json();
@@ -842,7 +844,7 @@ const refreshBillsData = async () => {
 
 
   useEffect(() => {
-    const newYears = getYearsFromYearToCurrent(2020);
+    const newYears = getYearsFromYearToCurrent(2024);
     setYears(newYears);
     
     handleReqBodyInputChange("month",months[dateObj.getMonth()])

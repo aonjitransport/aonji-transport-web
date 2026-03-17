@@ -397,12 +397,12 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                     textOverflow: "ellipsis",
                   }}
                 >
-                  <Text>Authorised By {bill?.createdBy?.name}</Text>
+                  <Text>Issued by {bill?.createdBy?.name}</Text>
                   <Text>Aonji Express Logistics Services</Text>
                 </View>
 
                 <Text style={{ marginLeft: 5 }}>Consigner Signature</Text>
-                <Text style={{ marginRight: 5 }}>Reciever Signature</Text>
+                <Text style={{ marginRight: 5 }}>Receiver Signature</Text>
               </View>
 
               <View

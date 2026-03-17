@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { Counter } from "./Counter";
-import { Maname } from "next/font/google";
+
 
 const ConsigneeSchema = new mongoose.Schema({
   name: String,

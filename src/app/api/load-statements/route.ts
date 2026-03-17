@@ -1,4 +1,5 @@
 // aonji_transport_nextjs/src/app/api/load-statements/route.ts
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "../../../../lib/mongodb";
 import "../../../../models/index.ts"; // Ensure all models are registered

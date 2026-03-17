@@ -274,6 +274,15 @@ const handleSaveAgency = async () => {
   }
 };
 
+const CustomNoRowsOverlay = () => {
+  return (
+    <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+      <h3>No statements found</h3>
+      <p>Try adjusting your filters or add a new bill.</p>
+    </div>
+  );
+};
+
   return (
     <>
       {/* Header Info */}
@@ -357,6 +366,7 @@ const handleSaveAgency = async () => {
               columnDefs={columnDefs}
               pagination={true}
               paginationPageSize={15}
+              noRowsOverlayComponent={CustomNoRowsOverlay} // ✅ custom no rows overlay
             />
           )}
         </div>

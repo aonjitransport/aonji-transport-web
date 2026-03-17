@@ -8,7 +8,7 @@ import logo from "../../../../../public/ANJITLOGOBLACK.svg"
 import jsPDF from 'jspdf'
 import hanumanLogo from "../../../../../public/hanumanlogo.png"
 import { LuHeartHandshake } from "react-icons/lu";
-import { useBreakpoint } from "../../../../app/bills/hooks/useBreakPoint"
+import { useBreakpoint } from "../hooks/useBreakPoint"
 import brandLogo from "../../../../../public/assets/footerlogo.svg"
 import { Dialog,DialogActions,DialogContent,DialogTitle,Button } from "@mui/material";
 
