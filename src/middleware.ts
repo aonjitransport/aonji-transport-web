@@ -7,6 +7,8 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET!);
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  const publicRoutes = ["/", "/about", "/contact"];
+
   const agentBlockedPaths = [
   "/admin/agencies",
   "/admin/users",
@@ -15,13 +17,14 @@ export async function middleware(req: NextRequest) {
 
   // 🟢 Public / ignored routes
   if (
-    pathname.startsWith("/_next") ||
-    pathname.match(/\.(css|js|png|jpg|svg|ico)$/) ||
-    pathname.startsWith("/admin/login") ||
-    pathname.startsWith("/api/auth")
-  ) {
-    return NextResponse.next();
-  }
+  publicRoutes.includes(pathname) ||
+  pathname.startsWith("/_next") ||
+  pathname.match(/\.(css|js|png|jpg|svg|ico)$/) ||
+  pathname.startsWith("/admin/login") ||
+  pathname.startsWith("/api/auth")
+) {
+  return NextResponse.next();
+}
 
   const token = req.cookies.get("token")?.value;
   if (!token) {
