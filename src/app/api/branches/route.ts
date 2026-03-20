@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       address: branch.address,
       code: branch.code,
       adminIds: [auth.user.id],
-      type: branch.type, // 🔥 MUST MATCH ENUM
+      type: branch.type   || "AGENT" , // 🔥 MUST MATCH ENUM
     });
 
     // 🔐 HASH PASSWORD
