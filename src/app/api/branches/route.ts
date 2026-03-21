@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
       phone: branch.phone,
       address: branch.address,
       code: branch.code,
-      adminIds: [auth.user.id],
+      adminIds: [], // will be linked later by admin
       type: branch.type   || "AGENT" , // 🔥 MUST MATCH ENUM
     });
 
