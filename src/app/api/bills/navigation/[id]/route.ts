@@ -17,12 +17,21 @@ export async function GET(
     await connectToDatabase();
 
     // Fetch current bill
-    const currentBill = await Bill.findById(id);
+const currentBill = await Bill.findById(id)
+  .populate('fromBranch', 'name phone address')
+  .populate('toBranch', 'name phone address')
+  .populate('consigner', 'name phone address')
+  .populate('consignees', 'name phone address')
+  .populate('totalNumOfParcels')
+  .populate('createdBy', 'name')
+  .lean<{ createdAt: Date }>();
+
+
     if (!currentBill) {
       return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
     }
 
-    const createdAt = currentBill.createdAt;
+    const createdAt = currentBill?.createdAt as Date;
 
     // Find previous bill (created before this one)
     const prev = await Bill.findOne({ createdAt: { $lt: createdAt } })

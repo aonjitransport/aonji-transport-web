@@ -208,7 +208,7 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                       Aonji Express Logistics Services
                     </Text>
                     <Text style={{ fontSize: 6 }}>
-                      CIN: U60231AP2022PTC158408
+                      GSTIN:37ASAPG8594P1ZX, Reg.:12/08/2009
                     </Text>
                     <Text style={{ fontSize: 6 }}>
                       beside new RTC Bus Stand,
@@ -216,50 +216,65 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                     <Text style={{ fontSize: 6 }}>
                       Proddatur, Kadapa Dist., 516360.
                     </Text>
-                    <Text style={{ fontSize: 6 }}>9898989898,84784783748.</Text>
+                    <Text style={{ fontSize: 6 }}>8106226616, 6303293542.</Text>
                   </View>
                   {/* Group 4 */}
                   <View>
-                    <Text
-                      style={[
-                        {
-                          fontFamily: "Helvetica-Bold",
-                          color: "#333",
-                          fontSize: 8,
-                        },
-                      ]}
-                    >
-                      Our services are in:
-                    </Text>
-                    <Text style={styles.headerDetails}>Anantapur</Text>
-                    <Text style={styles.headerDetails}>Kadapa</Text>
-                    <Text style={styles.headerDetails}>Kurnool</Text>
-                    <Text style={styles.headerDetails}>Kurnool</Text>
+                   
+                    <Text style={styles.headerDetails}>Anantapuram</Text>
+                    <Text style={styles.headerDetails}>Dharmavaram</Text>
+                    <Text style={styles.headerDetails}>Hindupuram</Text>
+                    <Text style={styles.headerDetails}>Rayalcheruvu</Text>
+                      <Text style={styles.headerDetails}>Peddavaduguru</Text>
+                    
+                      <Text style={styles.headerDetails}>Kalyandurgam</Text>
+                   
+                    
+                    
                   </View>
                   {/* Group 5 */}
 
                   <View>
                     <Text style={styles.headerDetails}>Tadipatri</Text>
-                    <Text style={styles.headerDetails}>Dharmavaram</Text>
-                    <Text style={styles.headerDetails}>Nandyal</Text>
-                    <Text style={styles.headerDetails}>Nandyal</Text>
-                    <Text style={styles.headerDetails}>Nandyal</Text>
+                    <Text style={styles.headerDetails}>Gooty</Text>
+                    <Text style={styles.headerDetails}>Yadiki</Text>
+                     <Text style={styles.headerDetails}>Kadiri</Text>
+                    <Text style={styles.headerDetails}>Pamidi</Text>
+                    <Text style={styles.headerDetails}>Guntakal</Text>
+                    
+                  
+                  
                   </View>
 
                   <View>
-                    <Text style={styles.headerDetails}>Tadipatri</Text>
-                    <Text style={styles.headerDetails}>Dharmavaram</Text>
-                    <Text style={styles.headerDetails}>Nandyal</Text>
-                    <Text style={styles.headerDetails}>Nandyal</Text>
-                    <Text style={styles.headerDetails}>Nandyal</Text>
+                    <Text style={styles.headerDetails}>Kadapa</Text>
+                    <Text style={styles.headerDetails}>Mydukuru</Text>
+                    <Text style={styles.headerDetails}>Khajipet</Text>
+                    <Text style={styles.headerDetails}>Chennur</Text>
+                    <Text style={styles.headerDetails}>Kamalapuram</Text>
+                    <Text style={styles.headerDetails}>Jammulamadugu</Text>
+                    
                   </View>
 
                   <View>
-                    <Text style={styles.headerDetails}>Tadipatri</Text>
-                    <Text style={styles.headerDetails}>Dharmavaram</Text>
-                    <Text style={styles.headerDetails}>Nandyal</Text>
-                    <Text style={styles.headerDetails}>Nandyal</Text>
-                    <Text style={styles.headerDetails}>Nandyal</Text>
+                    <Text style={styles.headerDetails}>Yerraguntla</Text>
+                    <Text style={styles.headerDetails}>Auku</Text>
+                     <Text style={styles.headerDetails}>Adoni</Text>
+                    <Text style={styles.headerDetails}>Sirivella</Text>
+                    <Text style={styles.headerDetails}>Emiganore</Text>
+                    <Text style={styles.headerDetails}>Kodumuru</Text>
+                   
+                  </View>
+
+                  
+                  <View>
+                    <Text style={styles.headerDetails}>Kurnool</Text>
+                    <Text style={styles.headerDetails}>Nandyala</Text>
+                    <Text style={styles.headerDetails}>Allagadda</Text>
+                    <Text style={styles.headerDetails}>Veligodu</Text>
+                    <Text style={styles.headerDetails}>Kovelkuntla</Text>
+                    <Text style={styles.headerDetails}>Bhethemcherla</Text>
+                    
                   </View>
 
                   <View>

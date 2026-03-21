@@ -13,7 +13,7 @@ import { LuHeartHandshake } from "react-icons/lu";
 
 import { Image } from "@react-pdf/renderer";
 
-interface Agency {
+interface Branch {
   name: string;
   phone: string;
   address: string;
@@ -34,19 +34,24 @@ interface Consignee {
   address: string;
 }
 
+interface CreatedBy {
+  name: string;
+  role: string;
+}
+
 interface Bill {
   id: string;
   lrNumber: number;
   date: string;
   to: string;
-  agency: Agency;
+  toBranch: Branch;
   totalNumOfParcels: number;
   totalAmount: number;
   paymentStatus: boolean;
   deliveryStatus: boolean;
   consigner: Consigner;
   consignees: Consignee[];
-  administrator: string;
+  createdBy: CreatedBy;
 }
 
 interface PDFDocumentProps {
@@ -173,15 +178,15 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                   }}
                 >
                   <Text
-                    style={[
+                    style={
                       {
                         fontSize: 10,
                         letterSpacing: 2,
                         color: "white",
                         textAlign: "center",
                         fontFamily: "Helvetica-Bold",
-                      },
-                    ]}
+                      }
+                    }
                   >
                     Lorry Receipt (LR)
                   </Text>
@@ -197,7 +202,7 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
 
                   {/* Group 3 */}
                   <View
-                    style={[{ fontFamily: "Helvetica-Bold", color: "#333" }]}
+                    style={{ fontFamily: "Helvetica-Bold", color: "#333" }}
                   >
                     <Text style={{ fontSize: 8 }}>
                       Aonji Express Logistics Services
@@ -216,13 +221,13 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                   {/* Group 4 */}
                   <View>
                     <Text
-                      style={[
+                      style={
                         {
                           fontFamily: "Helvetica-Bold",
                           color: "#333",
                           fontSize: 8,
-                        },
-                      ]}
+                        }
+                      }
                     >
                       Our services are in:
                     </Text>
@@ -268,10 +273,10 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
 
               {/* Bill Info */}
               <View
-                style={[
-                  styles.dateSection,
-                  { fontFamily: "Courier-Bold", color: "#333" },
-                ]}
+                style={
+                  
+                  { ...styles.dateSection, fontFamily: "Courier-Bold", color: "#333" }
+                }
               >
                 <Text style={styles.details}>#{bill.lrNumber}</Text>
                 <Text style={styles.details}>DATE: {date}</Text>
@@ -279,10 +284,10 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
 
               {/* Shipping Details */}
               <View
-                style={[
-                  styles.shippingDetailsSection,
-                  { paddingHorizontal: 10 },
-                ]}
+                style={
+                  
+                  { ...styles.shippingDetailsSection, paddingHorizontal: 10 }
+                }
               >
                 <View style={{ fontFamily: "Helvetica-Bold", color: "#333" }}>
                   <Text style={{}}>From: Proddatur</Text>
@@ -292,9 +297,9 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
 
                 <View style={{ fontFamily: "Helvetica-Bold", color: "#333" }}>
                   <Text style={{}}>To: {bill.to}</Text>
-                  <Text style={{}}>Agency: {bill.agency.name}</Text>
-                  <Text style={{}}>Address: {bill.agency.address}</Text>
-                  <Text style={{}}>Phone: {bill.agency.phone}</Text>
+                  <Text style={{}}>Agency: {bill.toBranch.name}</Text>
+                  <Text style={{}}>Address: {bill.toBranch.address}</Text>
+                  <Text style={{}}>Phone: {bill.toBranch.phone}</Text>
                 </View>
 
                 <View style={{ fontFamily: "Helvetica-Bold", color: "#333" }}>
@@ -311,19 +316,19 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
               {/* Table */}
               <View style={styles.table}>
                 <View style={styles.tableRow}>
-                  <Text style={[styles.tableCellHeader, { flex: 0.2 }]}>
+                  <Text style={ { ...styles.tableCellHeader, flex: 0.2 }}>
                     NO.
                   </Text>
-                  <Text style={[styles.tableCellHeader]}>Consignee</Text>
+                  <Text style={styles.tableCellHeader}>Consignee</Text>
                   <Text style={styles.tableCellHeader}>Phone</Text>
-                  <Text style={[styles.tableCellHeader, { flex: 0.3 }]}>
+                  <Text style={ { ...styles.tableCellHeader, flex: 0.3 }}>
                     Qty
                   </Text>
                   <Text style={styles.tableCellHeader}>Type</Text>
-                  <Text style={[styles.tableCellHeader, { flex: 0.4 }]}>
+                  <Text style={ { ...styles.tableCellHeader, flex: 0.4 }}>
                     Amount
                   </Text>
-                  <Text style={[styles.tableCellHeader, { flex: 1.6 }]}>
+                  <Text style={ { ...styles.tableCellHeader, flex: 1.6 }}>
                     Address
                   </Text>
                 </View>
@@ -331,28 +336,32 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                 {bill.consignees.map((item, index) => (
                   <View
                     key={index}
-                    style={[
-                      styles.tableRow,
-                      {
+                    style={
+                      
+                      { ...styles.tableRow,
                         fontFamily: "Courier-Bold",
                         color: "black",
                         fontWeight: "bold",
-                      },
-                    ]}
+                      }
+                    }
                   >
-                    <Text style={[styles.tableCell, { flex: 0.2 }]}>
+                    <Text style={ { ...styles.tableCell, flex: 0.2 }}>
                       {index + 1}
                     </Text>
-                    <Text style={[styles.tableCell]}>{item.name}</Text>
-                    <Text style={styles.tableCell}>{item.phone}</Text>
-                    <Text style={[styles.tableCell, { flex: 0.3 }]}>
+                    <Text style={ { ...styles.tableCell }}>
+                      {item.name}
+                    </Text>
+                    <Text style={ { ...styles.tableCell } }>
+                      {item.phone}
+                    </Text>
+                    <Text style={ { ...styles.tableCell, flex: 0.3 } }>
                       {item.numOfParcels}
                     </Text>
                     <Text style={styles.tableCell}>{item.type}</Text>
-                    <Text style={[styles.tableCell, { flex: 0.4 }]}>
+                    <Text style={ { ...styles.tableCell, flex: 0.4 } }>
                       Rs.{item.amount}
                     </Text>
-                    <Text style={[styles.tableCell, { flex: 1.6 }]}>
+                    <Text style={ { ...styles.tableCell, flex: 1.6 } }>
                       {item.address}
                     </Text>
                   </View>
@@ -372,9 +381,9 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
               />
 
               <View
-                style={[
-                  styles.details,
-                  {
+                style={
+                  
+                  { ...styles.details,
                     flexDirection: "row",
                     justifyContent: "space-between",
                     padding: 2,
@@ -382,8 +391,8 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                     fontFamily: "Helvetica-Bold",
                     fontSize: 8,
                     marginTop: 10,
-                  },
-                ]}
+                  }
+                }
               >
                 <View
                   style={{
@@ -392,12 +401,12 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                     textOverflow: "ellipsis",
                   }}
                 >
-                  <Text>Authorised By {bill?.administrator}</Text>
+                  <Text>Issued by {bill?.createdBy?.name}</Text>
                   <Text>Aonji Express Logistics Services</Text>
                 </View>
 
                 <Text style={{ marginLeft: 5 }}>Consigner Signature</Text>
-                <Text style={{ marginRight: 5 }}>Reciever Signature</Text>
+                <Text style={{ marginRight: 5 }}>Receiver Signature</Text>
               </View>
 
               <View

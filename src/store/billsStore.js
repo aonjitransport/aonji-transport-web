@@ -1,3 +1,4 @@
+// src/store/billsStore.js
 import { create } from "zustand";
 
 const billsURL = "/api/bills";

@@ -66,8 +66,8 @@ function FinalBillComp({billData}) {
 
                  <div className="border  text-xs p-2 font-semibold border-gray-300 rounded-md  " >
                     <p>To: <span className='font-Courier_Prime font-light text-gray-700 ' >{billData?.to}</span> </p>
-                    <p>Agency: <span className='font-Courier_Prime font-light text-gray-700 '>{billData?.agency?.name}</span> </p>
-                    <p>Phone: <span className='font-Courier_Prime font-light text-gray-700 '>{billData?.agency?.phone}</span>  </p>
+                    <p>Agency: <span className='font-Courier_Prime font-light text-gray-700 '>{billData?.toBranch?.name}</span> </p>
+                    <p>Phone: <span className='font-Courier_Prime font-light text-gray-700 '>{billData?.toBranch?.phone}</span>  </p>
                 </div>
 
                  <div className="border text-xs p-2 font-semibold border-gray-300 rounded-md  " >
@@ -130,9 +130,9 @@ function FinalBillComp({billData}) {
 
 
               <div className=' flex justify-between px-1 text-xs mt-6 ' >
-                <p>Signature of Consigner</p>
-                <p>Signature of Consigner</p>
-                <p>Signature of Consigner</p>
+                <p>issued by: {billData?.createdBy?.name}</p>
+                <p>Generated on: {new Date(billData.createdAt).toLocaleString("hi-IN")}</p>
+                  
 
               </div>
 

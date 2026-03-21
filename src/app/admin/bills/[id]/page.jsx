@@ -15,6 +15,9 @@ import { Dialog,DialogActions,DialogContent,DialogTitle,Button } from "@mui/mate
 import FinalBillComp from "./components/FinalBillComp"
 
 import PDFBillPage from "../components/PDFViewer/PDFBillPage";
+import { pdf, PDFDownloadLink,PDFViewer } from "@react-pdf/renderer";
+
+import BillPdfDocument from "../../invoice-section/components/BillPdfDocument";
 
 
 
@@ -115,15 +118,33 @@ const handleNext = () => {
     </div>
        
 
-        <Dialog  fullWidth={true}
-
-        maxWidth={isMobile?"xs":"lg"} open={openModal} onClose={() => setOpenModal(false)}>
+        <Dialog  
+          fullWidth ={true}
+          maxWidth="lg"
+         open={openModal} onClose={() => setOpenModal(false)}>
         <DialogTitle>Print Bill</DialogTitle>
-        <DialogContent>
-              <PDFBillPage billData={bill} />
-        </DialogContent>
+         <DialogContent>
+                  {/* PDF Preview Component */}
+                {
+                  loading ? (<p>Loading PDF...</p>
+                  ) : (
+                    <PDFViewer style={{ width: "100%", height: "80vh" }}>
+                      <BillPdfDocument bill={bill} />
+                    </PDFViewer>
+                  )
+
+                }
+                </DialogContent>
+       
         <DialogActions>
-         
+                  <PDFDownloadLink document={<BillPdfDocument bill={bill} />} fileName= {`bill_${bill?.lrNumber || "bill"}.pdf`} >
+              {({ blob, url, loading, error }) => (
+                <Button disabled={loading || error}>
+                  {loading ? "Generating PDF..." : "Download PDF"}
+                </Button>
+              )}
+            </PDFDownloadLink>
+              
           <Button  onClick={() => setOpenModal(false)}>
             Close
           </Button>
