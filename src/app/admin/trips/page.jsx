@@ -10,6 +10,8 @@ import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
 import Select from "@mui/material/Select";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
 
 import useTripsStore from "../../../store/tripsStore";
 import useBranchStore from "@/store/branchStore";
@@ -57,11 +59,12 @@ const Page = () => {
   const [years, setYears] = React.useState([])
   const [dateObj] = React.useState(new Date());
 
-  const [reqBody, setReqBody] = React.useState({
-    month: "",
-    year: new Date().getFullYear(), // ✅ default current year
-    branch: "",
-  });
+  const [reqBody, setReqBody] = useState({
+  month: "",
+  year: new Date().getFullYear(),
+  branch: "",
+  direction: "OUTGOING" // 👈 default
+});
 
   const handleReqBodyInputChange = (field, value) => {
     setReqBody((prev) => ({
@@ -119,6 +122,25 @@ const downloadTripPDF = async (trip) => {
     { headerName: "unpaid", field: "totalUnpaidAmount", sortable: true, filter: true },
     { headerName: "Balance due", field: "netPayableAmount", sortable: true, filter: true },
     {
+      headerName: "Status",
+      field: "status",
+      cellRenderer: (params) => { 
+        const statusColors = {
+          PLANNED: "gray",
+          IN_TRANSIT: "blue", 
+          REACHED: "orange",
+          COMPLETED: "green",
+        };  
+        return (
+          <span style={{ color: statusColors[params.value] || "black", fontWeight: "bold" }}>
+            {params.value}
+          </span>
+        );
+      }
+    },
+  
+   
+    {
       headerName:"download PDF",
       field:"_id",
       width:140,
@@ -132,7 +154,23 @@ const downloadTripPDF = async (trip) => {
       </button>
          );
        },
-    }
+    },
+    {
+  headerName: "View",
+  field: "_id",
+  cellRenderer: (params) => {
+    return (
+      <button
+        className="px-3 py-1 bg-green-600 text-white rounded"
+        onClick={() => {
+          window.location.href = `/admin/trips/${params.data._id}`;
+        }}
+      >
+        View Bills
+      </button>
+    );
+  }
+}
 
   ]
 
@@ -202,10 +240,10 @@ useEffect(() => {
 
   // ✅ Fetch trips only when all required filters are ready
 useEffect(() => {
-  if (reqBody.month && reqBody.year && reqBody.branch) {
+  if (reqBody.month && reqBody.year) {
     fetchTrips(reqBody);
   }
-}, [reqBody.month, reqBody.year, reqBody.branch]);
+}, [reqBody.month, reqBody.year, reqBody.branch, reqBody.direction]);
 
   
 
@@ -213,7 +251,18 @@ useEffect(() => {
     <>
       <div className="flex p-2 gap-2 justify-end align-top">
         {/* ✅ Controlled Select */}
+        <Tabs
+  value={reqBody.direction}
+  onChange={(e, value) => handleReqBodyInputChange("direction", value)}
+  textColor="primary"
+  indicatorColor="primary"
+>
+  <Tab value="ALL" label="ALL" />
+  <Tab value="OUTGOING" label="OUTGOING" />
+  <Tab value="INCOMING" label="INCOMING" />
+</Tabs>
         <FormControl sx={{ minWidth: 120 }}>
+
           <Select
             labelId="year-label"
             value={reqBody.year} // ✅ always controlled

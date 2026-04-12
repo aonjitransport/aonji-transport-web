@@ -13,10 +13,18 @@ import { LuHeartHandshake } from "react-icons/lu";
 
 import { Image } from "@react-pdf/renderer";
 
-interface Branch {
+interface toBranch {
+  name: string;
+  phone: string;
+  address: string;  
+  city: string;
+}
+
+interface fromBranch {
   name: string;
   phone: string;
   address: string;
+  city: string;
 }
 
 interface Consigner {
@@ -44,7 +52,8 @@ interface Bill {
   lrNumber: number;
   date: string;
   to: string;
-  toBranch: Branch;
+  toBranch: toBranch;
+  fromBranch: fromBranch;
   totalNumOfParcels: number;
   totalAmount: number;
   paymentStatus: boolean;
@@ -52,6 +61,7 @@ interface Bill {
   consigner: Consigner;
   consignees: Consignee[];
   createdBy: CreatedBy;
+  
 }
 
 interface PDFDocumentProps {
@@ -305,8 +315,10 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                 ]}
               >
                 <View style={{ fontFamily: "Helvetica-Bold", color: "#333" }}>
-                  <Text style={{}}>From: Proddatur</Text>
-                  <Text style={{}}>Phone: 9898989898</Text>
+                  <Text style={{}}>Agency: {bill.fromBranch.name}</Text>
+                  
+                  <Text style={{}}>From: {bill.fromBranch.city}</Text>
+                  <Text style={{}}>Phone: {bill.fromBranch.phone}</Text>
                   <Text style={{}}>Total Lot: {bill.totalNumOfParcels} </Text>
                 </View>
 

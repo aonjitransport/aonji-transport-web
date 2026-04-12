@@ -18,8 +18,8 @@ export async function GET(
 
     // Fetch current bill
 const currentBill = await Bill.findById(id)
-  .populate('fromBranch', 'name phone address')
-  .populate('toBranch', 'name phone address')
+  .populate('fromBranch', 'name phone address city')
+  .populate('toBranch', 'name phone address city')
   .populate('consigner', 'name phone address')
   .populate('consignees', 'name phone address')
   .populate('totalNumOfParcels')

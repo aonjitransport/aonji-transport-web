@@ -15,6 +15,17 @@ const DeliveryStatusRenderer = (props) => {
   }
 };
 
+const DELIVERED_STATUSES = ["DELIVERED", "POD_RECEIVED"];
+const UNDELIVERED_STATUSES = [
+  "CREATED",
+  "IN_WAREHOUSE",
+  "ADDED_TO_TRIP",
+  "IN_TRANSIT",
+  "ARRIVED_AT_BRANCH",
+  "OUT_FOR_DELIVERY",
+  "MISSING",
+];
+
 import { AgGridReact } from "ag-grid-react";
 import { _isRowSelection, AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import "./styles/dataGridStyles.css";
@@ -240,7 +251,7 @@ const DataGrid = () => {
     fromBranch: "",
     toBranch: "", 
     direction: "OUTGOING", // "OUTGOING" | "INCOMING" | "ALL"
-    deliveryStatus: false, // null means no filter, true or false to filter accordingly
+    status:  UNDELIVERED_STATUSES // default exclude delivered bills
   });
 
   useEffect(() => {
@@ -280,6 +291,9 @@ const DataGrid = () => {
 // Call fetchFilteredBills({ year, month, to }) when filters change
 useEffect(() => {
   fetchFilteredBills(billsReqBody);
+  console.log("Filters changed, fetching bills with:", billsReqBody); 
+  console.log("Current bills state:", bills);
+  console.log("Current filtered bills state:", filteredBills);
 }, [
   billsReqBody.month,
   billsReqBody.year,
@@ -287,7 +301,7 @@ useEffect(() => {
   billsReqBody.fromBranch,
   billsReqBody.toBranch,
   billsReqBody.direction,
-  billsReqBody.deliveryStatus,
+  billsReqBody.status,
 ]);
 
 
@@ -543,7 +557,7 @@ const displayRows = useMemo(() => {
   return (filteredBills || [])?.map(bill => ({
     ...bill,
     // tick the flag if this bill's _id is in tripIds
-    addedToTripFlag: idSet.has(bill._id),
+    
   }));
 }, [filteredBills, tripIds]);
 
@@ -554,9 +568,7 @@ useEffect(() => {
   // ✅ Map only once per dependency change
   const billsWithTripFlags = filteredBills?.map(bill => ({
     ...bill,
-    addedToTripFlag: deliveryBillsList.some(
-      deliveryBill => deliveryBill._id === bill._id
-    ),
+   
   }));
 
   // Only update if data actually changed
@@ -575,6 +587,7 @@ useEffect(() => {
   
 
   const colDefs = [
+    { headerName: "S.No.", field: "sno", width: 90, minWidth: 90, valueGetter: (params) => params.node.rowIndex + 1 },
     { headerName: "INV No.", field: "lrNumber", width: 120, minWidth: 120, maxWidth:120 , sortable: true, filter: true },
     { headerName: "Date", field: "date", width: 110, minWidth: 110 },
     {
@@ -635,73 +648,102 @@ useEffect(() => {
         "footer-bold": (params) => params.node.rowPinned === "bottom",
       },
     },
+   {
+  headerName: "Payment",
+  field: "paymentStatus",
+  width: 100,
+  cellRenderer: (params) => {
+    return params.value ? "Paid" : "Unpaid";
+  }
+},
     {
-      headerName: "Payment",
-      field: "paymentStatus",
-      editable: false,
-      minWidth: 90,
-      width: 90,
-      cellEditor: "agCheckboxCellEditor",
-      cellRenderer: "agCheckboxCellRenderer",
-      cellRenderer: DeliveryStatusRenderer,
-      onCellValueChanged: (params) => handleStatusChange(params, "deliveryStatus"),
-      
-    },
-    {
-      headerName: "Delivery",
-      field: "deliveryStatus",
-      editable: false,
-      width: 90,
-      cellRenderer: DeliveryStatusRenderer,
-      onCellValueChanged: (params) => handleStatusChange(params, "deliveryStatus"),
-    },
+  headerName: "Status",
+  field: "status",
+  width: 160,
+  minWidth: 160,
+  cellRenderer: (params) => {
+    const status = params.value;
+
+    const colors = {
+      CREATED: "#999",
+      IN_WAREHOUSE: "#6c757d",
+      ADDED_TO_TRIP: "#007bff",
+      IN_TRANSIT: "#f0ad4e",
+      ARRIVED_AT_BRANCH: "#5bc0de",
+      OUT_FOR_DELIVERY: "#ff9800",
+      DELIVERED: "#28a745",
+      POD_RECEIVED: "#20c997",
+    };
+
+    return (
+      <span
+        style={{
+          padding: "4px 8px",
+          borderRadius: "6px",
+          background: colors[status] || "#ccc",
+          color: "white",
+          fontSize: "12px",
+          fontWeight: "500",
+        }}
+      >
+        {status}
+      </span>
+    );
+  },
+},
+
     
-    {
-      
+    
+   {
   headerName: "Add To Trip",
-  field: "addedToTripFlag",
-  editable: //not editable if user is super admin because trip setting is not relevant for super admin and also not editable if bill is already delivered
-    user?.role === "super_admin" ? false : (params) => {
-      if(params.data.deliveryStatus) return false; // not editable if already delivered 
-      if(billsReqBody.direction === "INCOMING") return false; // not editable if direction is incoming
-      return true; // editable otherwise
-    },
-  
-  minWidth: 90,
-  width: 120,
-  cellEditor: "agCheckboxCellEditor",
-  cellRenderer: "agCheckboxCellRenderer",
-  
+  field: "_id",
+  minWidth: 140,
 
-  onCellValueChanged: (params) => {
-    const { data } = params;
-    const _id = data._id;
+  cellRenderer: (params) => {
+    const bill = params.data;
+    const _id = bill._id;
 
-    if (params.newValue) {
-      if(selectedBranch == null){
-        alert("Please select a branch in the filter before adding bills to a trip.");
-        params.api.refreshCells({ force: true });
-        return;
-      }
-      if(tripIds.includes(_id)) {
-        console.warn("Bill already added to trip:", _id);
-        return;
-      }
-      // add id (avoid duplicates)
-      setTripIds(prevIds => prevIds.includes(_id) ? prevIds : [...prevIds, _id]);
+    const isSelected = tripIds.includes(_id);
 
-      // add full object only if not present
-      setdeliveryBillsList(prev => prev.some(b => b._id === _id) ? prev : [...prev, data]);
-    } else {
-      // remove id and object
-      setTripIds(prev => prev.filter(id => id !== _id));
-      setdeliveryBillsList(prev => prev.filter(b => b._id !== _id));
-    }
+    const isDisabled =
+      user?.role === "super_admin" ||
+      billsReqBody.direction === "INCOMING" ||
+      !["CREATED", "IN_WAREHOUSE"].includes(bill.status);
 
-    // Optional: safe refresh (only if API exists)
-    if (gridRef.current?.api) {
-      gridRef.current.api.refreshCells({ force: true });
-    }
+    return (
+      <button
+        disabled={isDisabled}
+        className={`px-2 py-1 rounded ${
+          isDisabled
+            ? "bg-gray-300 cursor-not-allowed"
+            : isSelected
+            ? "bg-red-500 text-white"
+            : "bg-blue-600 text-white"
+        }`}
+        onClick={() => {
+          if (selectedBranch == null) {
+            alert("Please select a branch first.");
+            return;
+          }
+
+          if (isSelected) {
+            // ❌ REMOVE (LOCAL ONLY)
+            setTripIds((prev) => prev.filter((id) => id !== _id));
+            setdeliveryBillsList((prev) =>
+              prev.filter((b) => b._id !== _id)
+            );
+          } else {
+            // ✅ ADD (LOCAL ONLY)
+            setTripIds((prev) => [...prev, _id]);
+            setdeliveryBillsList((prev) => [...prev, bill]);
+          }
+
+          gridRef.current?.api?.refreshCells({ force: true });
+        }}
+      >
+        {isSelected ? "Remove" : "Add"}
+      </button>
+    );
   },
 },
 {
@@ -740,11 +782,27 @@ useEffect(() => {
   
 };
 
+
+
 const refreshBillsData = async () => {
   try {
     await fetchFilteredBills(billsReqBody); // reload filtered bills
+    
     setTripIds([]);
     setdeliveryBillsList([]);
+
+    // ✅ ONLY reset driver + vehicle
+    setTripData((prev) => ({
+      ...prev,
+      driver: "",
+      vehicleNumber: "",
+    }));
+
+    
+
+    
+    
+    
 
     if (gridRef.current?.api) {
       gridRef.current.api.refreshCells({ force: true });
@@ -773,7 +831,7 @@ const refreshBillsData = async () => {
       setOpenChargesModal(false);
       setOpenPdfModal(false);
       setPrintBillsFlag(false);
-
+        
       // ✅ Wait a moment or directly refetch bills
       await refreshBillsData(); 
       
@@ -785,6 +843,57 @@ const refreshBillsData = async () => {
     console.error("Error creating trip:", err);
   }
   };  
+
+const handleCreateTrip = async () => {
+  try {
+    if (tripIds.length === 0) {
+      alert("No bills selected");
+      return;
+    }
+
+    const result = await createTrip({
+      ...tripData,
+      bills: tripIds,
+    });
+
+    if (result) {
+      console.log("Trip created successfully:", result);
+      setCreatedTripId(result?.tripId || null);
+      setOpenTripSuccessDialog(true);
+    }
+
+    if (!result?._id) throw new Error("Trip creation failed");
+
+   
+
+    // ❌ REMOVE BILL STATUS UPDATE FROM HERE
+
+     if (result) {
+      // Reset trip data and UI
+      setTripData({});
+      setdeliveryBillsList([]);
+      setOpenChargesModal(false);
+      setOpenPdfModal(false);
+      setPrintBillsFlag(false);
+
+      // ✅ Wait a moment or directly refetch bills
+      await refreshBillsData(); 
+      
+      console.log("Bills refetched after trip creation");
+    } else {
+      console.error("Failed to create trip. Please try again.");
+    }
+
+    
+
+    await refreshBillsData();
+
+    console.log("✅ Trip + Bills synced");
+
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   const handleSuccessDailogClose = () => {
     setOpenTripSuccessDialog(false)
@@ -851,6 +960,8 @@ const refreshBillsData = async () => {
     handleReqBodyInputChange("year",dateObj.getFullYear())
     
   }, []);
+
+
 
 
       
@@ -1046,19 +1157,21 @@ const handleTabsChange = (event, newValue) => {
 
             <div className="flex justify-center items-end  ">
               <div className="flex items-center mb-4 ml-2 ">
-                <input
-                  id="default-checkbox"
-                  checked={!billsReqBody.deliveryStatus}
-                  onChange={() => {
-                    handleReqBodyInputChange(
-                      "deliveryStatus",
-                      !billsReqBody.deliveryStatus,
-                    );
-                  }}
-                  type="checkbox"
-                  value=""
-                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                />
+               <input
+  checked={billsReqBody.status.every(
+    (s) => !DELIVERED_STATUSES.includes(s)
+  )}
+  onChange={(e) => {
+    if (e.target.checked) {
+      // ✅ show UNDELIVERED
+      handleReqBodyInputChange("status", UNDELIVERED_STATUSES);
+    } else {
+      // ❌ show DELIVERED only
+      handleReqBodyInputChange("status", DELIVERED_STATUSES);
+    }
+  }}
+  type="checkbox"
+/>                                                                            
                 <label className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
                   undelivered
                 </label>
@@ -1282,7 +1395,7 @@ const handleTabsChange = (event, newValue) => {
           </div>
         </DialogContent>
         <DialogActions>
-          <Button color="blue" onClick={handlePostTrip}>
+          <Button color="blue" onClick={handleCreateTrip}>
             Add Trip
           </Button>
           <Button color="gray" onClick={() => setOpenChargesModal(false)}>
@@ -1317,7 +1430,7 @@ const handleTabsChange = (event, newValue) => {
           {tripCreateStatus === "success" && (
             <>
               <DialogContentText>
-                Your bill has been successfully created! with Trip ID:{" "}
+                Your bill has been successfully created! with Trip ID:
                 {createdTripId}
               </DialogContentText>
               <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>

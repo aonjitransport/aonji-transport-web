@@ -1,5 +1,6 @@
 // lib/mongodb.ts
 import mongoose from 'mongoose';
+import  { initSuperAdmin } from './initSuperAdmin';
 
 const MONGODB_URI = process.env.MONGODB_URI!;
 
@@ -10,6 +11,8 @@ if (!MONGODB_URI) {
 
 let cached = (global as any).mongoose || { conn: null, promise: null };
 
+let isInitialized = false;
+
 export async function connectToDatabase() {
   if (cached.conn) return cached.conn;
 
@@ -18,5 +21,9 @@ export async function connectToDatabase() {
   }
 
   cached.conn = await cached.promise;
+   if (!isInitialized) {
+    await initSuperAdmin();
+    isInitialized = true;
+  }
   return cached.conn;
 }

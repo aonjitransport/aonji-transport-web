@@ -16,6 +16,7 @@ import { RiAccountCircleFill, RiRadioButtonLine } from "react-icons/ri";
 import { useAuthStore } from "../store/useAuthStore";
 import { useRouter, usePathname } from "next/navigation";
 import logo from "../../public/ANJITLOG.svg";
+import NotificationBell from "./notificationBell";
 import { set } from "mongoose";
 
 const AdminHeader = () => {
@@ -50,6 +51,7 @@ const AdminHeader = () => {
     city: "",
     phone: "",
     address: "",
+    code: "",
   });
 
 
@@ -173,19 +175,20 @@ const AdminHeader = () => {
     <>
 
      
-      <div className="w-full p-2 bg-blue-950 flex justify-between sticky top-0 z-50">
+      <div className="w-full p-2 bg-blue-950 flex justify-between items-center sticky top-0 z-50">
         <Link href={"/admin"}>
           <Image src={logo} alt="logo" className="w-28" />
         </Link>
 
         {pathname=== "/admin/login"? null : 
-        <div>
-        <RiAccountCircleFill
-          size={30}
-          color="white"
-          className="cursor-pointer"
-          onClick={() => setDrawerOpen(true)}
-        />
+        <div className="flex items-center gap-4">
+          {branchId && <NotificationBell branchId={branchId} />}
+          <RiAccountCircleFill
+            size={30}
+            color="white"
+            className="cursor-pointer"
+            onClick={() => setDrawerOpen(true)}
+          />
         </div>
         
         }
@@ -269,8 +272,10 @@ const AdminHeader = () => {
             <>
               <TextField label="Branch Name" fullWidth
                 onChange={(e) => setBranchForm({ ...branchForm, name: e.target.value })} />
+                <TextField label="Branch Code" fullWidth
+                onChange={(e) => setBranchForm({ ...branchForm, code: e.target.value })} />
               <TextField label="City" fullWidth
-                onChange={(e) => setBranchForm({ ...branchForm, city: e.target.value })} />
+                onChange={(e) => setBranchForm({ ...branchForm, city: e.target.value })} /> 
               <TextField label="Phone" fullWidth
                 onChange={(e) => setBranchForm({ ...branchForm, phone: e.target.value })} />
               <TextField label="Address" fullWidth

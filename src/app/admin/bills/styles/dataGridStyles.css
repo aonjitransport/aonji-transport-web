@@ -34,3 +34,9 @@
   .row-success{
     background-color: #357a38 !important;
   }
+
+
+  .ag-theme-quartz {
+  --ag-border-radius: 12px;
+  --ag-font-size: 14px;
+}

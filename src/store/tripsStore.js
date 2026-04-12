@@ -7,28 +7,40 @@ const useTripsStore = create((set, get) => ({
   loading: false,
   error: null,
 
-  fetchTrips: async (reqBody) => {
-    if (!reqBody?.branch) return;
+fetchTrips: async (reqBody) => {
+  const fetchId = ++currentFetchId;
+  set({ loading: true, error: null });
 
-    const fetchId = ++currentFetchId;
-    set({ loading: true, error: null });
+  try {
+    const params = new URLSearchParams();
 
-    try {
-      const params = new URLSearchParams();
-      if (reqBody.month) params.append("month", reqBody.month);
-      if (reqBody.year) params.append("year", reqBody.year);
-      if (reqBody.branch) params.append("branch", reqBody.branch);
+    // ✅ date filters
+    if (reqBody.month) params.append("month", reqBody.month);
+    if (reqBody.year) params.append("year", reqBody.year);
 
-      const res = await fetch(`/api/trips?${params.toString()}`);
-      const data = await res.json();
+    // ✅ branch (optional now)
+    if (reqBody.branch) params.append("branch", reqBody.branch);
 
-      if (fetchId === currentFetchId) {
-        set({ trips: data, loading: false });
-      }
-    } catch (error) {
-      if (fetchId === currentFetchId) set({ error, loading: false });
+    // ✅ NEW: direction
+    if (reqBody.direction) {
+      params.append("direction", reqBody.direction);
     }
-  },
+
+    const res = await fetch(`/api/trips?${params.toString()}`);
+    const data = await res.json();
+
+    console.log("Fetched trips:", data);
+
+    if (fetchId === currentFetchId) {
+      set({ trips: data, loading: false });
+    }
+
+  } catch (error) {
+    if (fetchId === currentFetchId) {
+      set({ error, loading: false });
+    }
+  }
+},
 
   fetchAllTripsByAgency: async (agencyId) => {
     if (!agencyId) return;

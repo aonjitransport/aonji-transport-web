@@ -8,13 +8,11 @@ import { Counter } from "../../../../models/Counter";
 import { requireRole } from "lib/auth";
 
 export async function POST(req: NextRequest) {
-
   await connectToDatabase();
 
   const session = await mongoose.startSession();
 
   try {
-
     const auth = await requireRole(req, ["admin", "super_admin", "agent"]);
     if (auth instanceof NextResponse) return auth;
 
@@ -31,7 +29,9 @@ export async function POST(req: NextRequest) {
       grandTotalChargeAmount,
       vehicleNumber,
       originBranch,
-      destinationBranch
+      destinationBranch,
+      addedToTripFlag
+
     } = body;
 
     if (!destinationBranch || !driver || !bills?.length) {
@@ -40,14 +40,20 @@ export async function POST(req: NextRequest) {
 
     session.startTransaction();
 
-    const branch = await Branch.findById(destinationBranch).session(session);
+    // ✅ prevent adding already assigned bills
+    const existingBills = await Bill.find({
+      _id: { $in: bills },
+      trip: { $ne: null }
+    }).session(session);
 
-    if (!branch) {
-      throw new Error("Branch not found");
+    if (existingBills.length > 0) {
+      throw new Error("Some bills are already assigned to a trip");
     }
 
-    const branchCode = branch.code;
+    const branch = await Branch.findById(destinationBranch).session(session);
+    if (!branch) throw new Error("Branch not found");
 
+    const branchCode = branch.code;
     const year = new Date().getFullYear();
 
     const counterKey = `trip-${branchCode}-${year}`;
@@ -59,20 +65,19 @@ export async function POST(req: NextRequest) {
     );
 
     const serial = String(counter.seq).padStart(3, "0");
-
     const tripId = `TS-${branchCode}-${year}-${serial}`;
 
     const agencyEarning = agencyCharges?.chargeAmount || 0;
-
     const companyEarning = netPayableAmount || 0;
 
+    // ✅ CREATE TRIP (PLANNED)
     const [trip] = await Trip.create(
       [
         {
           tripId,
           driver,
-          status: "in_transit",
-          branch: destinationBranch,
+          status: "PLANNED", // ✅ FIXED
+
           bills: bills.map((id: string) => new mongoose.Types.ObjectId(id)),
 
           totalArticels,
@@ -81,6 +86,7 @@ export async function POST(req: NextRequest) {
           totalUnpaidAmount,
           netPayableAmount,
           grandTotalChargeAmount,
+          addedToTripFlag,
 
           vehicleNumber,
 
@@ -94,17 +100,33 @@ export async function POST(req: NextRequest) {
       { session }
     );
 
+    // ✅ UPDATE BILLS
     await Bill.updateMany(
       { _id: { $in: bills } },
-      { $set: { trip: trip._id, deliveryStatus: true } },
+      {
+        $set: {
+          trip: trip._id,
+          status: "ADDED_TO_TRIP",
+          currentLocation: "Origin Branch" ,// ✅ FIXED
+          addedToTripFlag: true // ✅ NEW FLAG
+        },
+        $push: {
+          statusHistory: {
+            status: "ADDED_TO_TRIP",
+            date: new Date(),
+            updatedBy: auth.user.id
+          }
+        }
+        
+      },
       { session }
     );
 
+    // ✅ UPDATE BRANCH STATS
     await Branch.findByIdAndUpdate(
       destinationBranch,
       {
         $push: { trips: trip._id },
-
         $inc: {
           totalTrips: 1,
           totalTripAmount: totalAmount || 0,
@@ -120,12 +142,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(trip, { status: 201 });
 
-  } catch (err) {
-
+  } catch (error) {
     await session.abortTransaction();
     session.endSession();
 
-    console.error("Trip creation failed:", err);
+    console.error("Trip creation failed:", error);
 
     return NextResponse.json(
       { error: "Failed to create trip" },
@@ -133,7 +154,6 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-
 
 
 
@@ -158,32 +178,11 @@ export async function GET(req: NextRequest) {
     const year = searchParams.get("year");
     const month = searchParams.get("month");
     const branch = searchParams.get("branch");
+    const direction = searchParams.get("direction");
 
     const filter: any = {};
 
-    // 🔒 ROLE BASED BRANCH CONTROL
-    if (user.role === "agent") {
-      // agent always locked to their branch
-      filter.branch = new mongoose.Types.ObjectId(user.branchId);
-    }
-
-    else if (user.role === "admin") {
-      // admin default branch
-      if (branch && mongoose.Types.ObjectId.isValid(branch)) {
-        filter.branch = new mongoose.Types.ObjectId(branch);
-      } else {
-        filter.branch = new mongoose.Types.ObjectId(user.branchId);
-      }
-    }
-
-    else if (user.role === "super_admin") {
-      // super_admin optional filter
-      if (branch && mongoose.Types.ObjectId.isValid(branch)) {
-        filter.branch = new mongoose.Types.ObjectId(branch);
-      }
-    }
-
-    // 📅 Month + Year filter
+    /* ---------------- DATE FILTER ---------------- */
     const monthNames = [
       "january","february","march","april","may","june",
       "july","august","september","october","november","december"
@@ -201,28 +200,88 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const selectedBranch =
+      branch && mongoose.Types.ObjectId.isValid(branch)
+        ? new mongoose.Types.ObjectId(branch)
+        : null;
+
+    /* ---------------- ROLE + DIRECTION ---------------- */
+
+    if (user.role === "super_admin") {
+      if (direction === "OUTGOING") {
+        if (selectedBranch) filter.originBranch = selectedBranch;
+      } 
+      else if (direction === "INCOMING") {
+        if (selectedBranch) filter.destinationBranch = selectedBranch;
+      } 
+      else {
+        if (selectedBranch) {
+          filter.$or = [
+            { originBranch: selectedBranch },
+            { destinationBranch: selectedBranch },
+          ];
+        }
+      }
+    } else {
+      const userBranchId = new mongoose.Types.ObjectId(user.branchId);
+
+      if (direction === "OUTGOING") {
+        filter.originBranch = userBranchId;
+
+        // ✅ ONLY apply if DIFFERENT branch selected
+        if (
+          selectedBranch &&
+          selectedBranch.toString() !== userBranchId.toString()
+        ) {
+          filter.destinationBranch = selectedBranch;
+        }
+      } 
+      
+      else if (direction === "INCOMING") {
+        filter.destinationBranch = userBranchId;
+
+        // ✅ ONLY apply if DIFFERENT branch selected
+        if (
+          selectedBranch &&
+          selectedBranch.toString() !== userBranchId.toString()
+        ) {
+          filter.originBranch = selectedBranch;
+        }
+      } 
+      
+      else {
+        filter.$or = [
+          { originBranch: userBranchId },
+          { destinationBranch: userBranchId },
+        ];
+      }
+    }
+
+    /* ---------------- QUERY ---------------- */
+
     const trips = await Trip.find(filter)
-.select(
-`tripId
-driver
-vehicleNumber
-originBranch
-destinationBranch
-destinationBranchName
-totalArticels
-totalAmount
-totalUnpaidAmount
-netPayableAmount
-agencyCharges
-grandTotalChargeAmount
-createdAt
-bills`
-)
-.populate("originBranch", "name city phone")
-.populate("destinationBranch", "name city phone")
-.populate("bills", "lrNumber totalAmount consigner consignees articles")
-.sort({ createdAt: -1 })
-.lean();
+      .select(`
+        tripId
+        driver
+        vehicleNumber
+        originBranch
+        destinationBranch
+        destinationBranchName
+        totalArticels
+        totalAmount
+        totalUnpaidAmount
+        netPayableAmount
+        agencyCharges
+        grandTotalChargeAmount
+        status
+        createdAt
+        bills
+      `)
+      .populate("originBranch", "name city phone")
+      .populate("destinationBranch", "name city phone")
+      .populate("bills", "lrNumber totalAmount status")
+      .sort({ createdAt: -1 })
+      .lean();
 
     return NextResponse.json(trips);
 

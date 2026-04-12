@@ -4,6 +4,7 @@ import { connectToDatabase } from "../../../../../lib/mongodb";
 import { LoadStatement } from "../../../../../models/LoadStatement";
 import { Trip } from "../../../../../models/Trip";
 import { Branch } from "../../../../../models/Branch";
+import { Message } from "../../../../../models/Message";
 
 const monthMap: Record<string, number> = {
   january: 1,
@@ -115,8 +116,25 @@ const balanceDue = Number(
       balanceDue,
       month,
       year,
-      paymentStatus: false,
+      paymentStatus: "pending",
     });
+
+    // ✅ Create system notification
+    try {
+      const monthName = Object.entries(monthMap).find(([_, m]) => m === month)?.[0] || String(month);
+      await Message.create({
+        branch: branchId,
+        sender: null,
+        senderName: "System",
+        senderRole: "system",
+        type: "LOAD_STATEMENT_GENERATED",
+        title: "Load Statement Generated",
+        content: `Load Statement #${loadStatementId} has been generated for ${monthName} ${year}. Total freight: ₹${totalFreightAmount}. Due: ₹${balanceDue}`,
+      });
+    } catch (msgError) {
+      console.error("Error creating notification message:", msgError);
+      // Don't fail the statement generation if message creation fails
+    }
 
     return NextResponse.json({
       message: "Load statement generated successfully",

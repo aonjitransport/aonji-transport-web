@@ -59,8 +59,9 @@ function FinalBillComp({billData}) {
               <div className="grid grid-cols-3 gap-3 px-4 justify-between  " >
 
                 <div className="border p-2 text-xs font-semibold border-gray-300 rounded-md  " >
-                    <p>From: <span className='font-Courier_Prime font-light text-gray-700 ' > proddatur</span></p>
-                    <p>Phone: <span className='font-Courier_Prime font-light text-gray-700 ' >9540959405</span>  </p>
+                    <p> <span className='font-Courier_Prime  text-gray-700 ' >  {billData?.fromBranch?.name}</span></p>
+                    <p>From: <span className='font-Courier_Prime font-light text-gray-700 ' >  {billData?.fromBranch?.city}</span></p>
+                    <p>Phone: <span className='font-Courier_Prime font-light text-gray-700 ' >{billData?.fromBranch?.phone}</span>  </p>
                     <p>Total Lot: <span className='font-Courier_Prime font-light text-gray-700 ' >{billData.totalNumOfParcels}</span>  </p>
                 </div>
 

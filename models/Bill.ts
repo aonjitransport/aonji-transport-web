@@ -10,89 +10,127 @@ const ConsigneeSchema = new mongoose.Schema({
   amount: Number,
   address: String,
 });
+const statusEnum = [
+  "CREATED",
+  "IN_WAREHOUSE",
+  "ADDED_TO_TRIP",
+  "IN_TRANSIT",
+  "ARRIVED_AT_BRANCH",
+  "OUT_FOR_DELIVERY",
+  "DELIVERED",
+  "POD_RECEIVED",
+  "MISSING" // ✅ added
+];
 
 const BillSchema = new mongoose.Schema(
   {
-    lrNumber: { type: String, unique: true }, // formatted ID (e.g. B10250001)
+    lrNumber: { type: String, unique: true , sparse: true }, // ✅ sparse for safe unique
+
     date: String,
     to: String,
- 
+
     totalNumOfParcels: Number,
     totalAmount: Number,
+
     paymentStatus: Boolean,
+
+    // ⚠️ keep but ignore in logic
     addedToTripFlag: Boolean,
     deliveryStatus: Boolean,
+
     doorDelivery: { type: Boolean, default: false },
     confirmDelivery: Boolean,
+
+    status: {
+      type: String,
+      enum: statusEnum,
+      default: "CREATED"
+    },
+
+    trip: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Trip",
+      default: null
+    },
+
+    currentLocation: {
+      type: String,
+      default: "Origin Branch" // ✅ important
+    },
+
+    statusHistory: [
+      {
+        status: String,
+        date: { type: Date, default: Date.now },
+        updatedBy: String
+      }
+    ],
+
+    deliveredAt: Date,
+    receiverName: String,
+    podUrl: String,
 
     consigner: {
       name: String,
       phone: Number,
       address: String,
     },
+
     consignees: [ConsigneeSchema],
-   
+
     fromBranch: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Branch",
-    required: true,
-  },
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Branch",
+      required: true,
+    },
 
-  toBranch: {
-    type:  mongoose.Schema.Types.ObjectId,
-    ref: "Branch",
-    required: true,
-  },
+    toBranch: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Branch",
+      required: true,
+    },
 
-  createdBy: {
-    type:  mongoose.Schema.Types.ObjectId,
-    ref: "User",
-  },
-
- 
-
-
-
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
   },
   { timestamps: true }
 );
 
-// ✅ Pre-save hook for formatted LR number (SAFE + ATOMIC)
+
 BillSchema.pre("save", async function (next) {
-  if (!this.isNew) return next();
+  if (!this.isNew || this.lrNumber) return next(); // ✅ added check
 
-  console.log("🧩 [DEBUG] Running pre-save hook for Bill...");
+  try {
+    const now = new Date();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const yyyy = now.getFullYear();
+    const yy = String(yyyy).slice(-2);
 
-  const now = new Date();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const yyyy = now.getFullYear();
-  const yy = String(yyyy).slice(-2); // last 2 digits
+    const counterKey = `lr-${yyyy}-${mm}`;
 
-  // 🔑 Unified counter key (monthly LR reset)
-  const counterKey = `lr-${yyyy}-${mm}`; // e.g. lr-2026-01
+    const counter = await Counter.findOneAndUpdate(
+      { key: counterKey },
+      {
+        $inc: { seq: 1 },
+        $setOnInsert: { key: counterKey },
+      },
+      {
+        new: true,
+        upsert: true,
+      }
+    );
 
-  const counter = await Counter.findOneAndUpdate(
-    { key: counterKey },
-    {
-      $inc: { seq: 1 },
-      $setOnInsert: { key: counterKey },
-    },
-    {
-      new: true,
-      upsert: true,
-    }
-  );
+    const seq = String(counter.seq).padStart(4, "0");
 
-  console.log("✅ [DEBUG] Counter result:", counter);
+    this.lrNumber = `LR${mm}${yy}${seq}`;
 
-  const seq = String(counter.seq).padStart(4, "0");
-
-  // 📄 Final LR number format
-  this.lrNumber = `LR${mm}${yy}${seq}`;
-
-  console.log("✅ [DEBUG] Generated lrNumber:", this.lrNumber);
-
-  next();
+    next();
+  } catch (err) {
+     console.error("Error generating LR number:", err);
+     
+  }
 });
 
 

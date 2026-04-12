@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '../../../../lib/mongodb';
 import { Bill } from '../../../../models/Bill';
 import  { requireRole } from '../../../../lib/auth';
-
+import { sendWhatsAppMessage } from "@/lib/notifications/whatsapp";
+import { User } from '../../../../models/User';
+import { Branch } from '../../../../models/Branch';
 
 
 
 
 export async function POST(req: NextRequest) {
+
+
   try {
     // 🛡 Require admin only
     const auth = await requireRole(req, ["admin", "super_admin","agent"  ]);
@@ -16,23 +20,57 @@ export async function POST(req: NextRequest) {
     const data = await req.json();
     await connectToDatabase();
 
+    const today = new Date();
+const expectedDate = new Date();
+expectedDate.setDate(today.getDate() + 2);
+
+const formattedDate = expectedDate.toLocaleDateString("en-IN", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+
     const newBill = await Bill.create({
       ...data,
       createdBy: auth.user.id,   // ✅ THIS WAS MISSING
+        expectedDelivery: expectedDate, // ✅ Store as Date
     });
-    const populatedBill = await Bill.findById(newBill._id)
-                  .populate("fromBranch", "name city phone address")
-                  .populate("toBranch", "name city phone address")
-                  .populate("createdBy", "name role")
-                  .lean();
+    const populatedBill: any = await Bill.findById(newBill._id)
+  .populate("fromBranch", "name city phone address")
+  .populate("toBranch", "name city phone address")
+  .populate("createdBy", "name role")
+  .lean();
 
-    return NextResponse.json(populatedBill, { status: 201 });
+  // ✅ Send WhatsApp
+  
+ /*    if (Array.isArray(data?.consignees) && data.consignees.length > 0) {
+    await Promise.all(
+      data.consignees.map((consignee: any) => {
+        if (!consignee?.phone) {
+          console.warn("⚠️ Missing phone:", consignee);
+          return null;
+        }
+
+        return sendWhatsAppMessage({
+          phone: consignee.phone,
+          lrNumber: newBill.lrNumber,
+          deliveryDate: formattedDate,
+          consigneeName: consignee.name,
+        });
+      })
+    );
+  }   
+
+ */    return NextResponse.json(populatedBill, { status: 201 });
 
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Error creating bill" }, { status: 500 });
   }
 }
+
+
+
 
 export async function GET(req: NextRequest) {
   try {
@@ -51,7 +89,8 @@ export async function GET(req: NextRequest) {
     const to = searchParams.get("to");
     const fromBranch = searchParams.get("fromBranch");
     const toBranch = searchParams.get("toBranch");
-    const deliveryStatus = searchParams.get("deliveryStatus");
+    const statusParam = searchParams.get("status");
+
     const direction = searchParams.get("direction"); // 👈 NEW
 
     const filter: any = {};
@@ -59,10 +98,14 @@ export async function GET(req: NextRequest) {
     /* ---------------- BASIC FILTERS ---------------- */
     if (to) filter.to = to;
 
-    if (deliveryStatus !== null) {
-      filter.deliveryStatus = deliveryStatus === "true";
-    }
+    
+    /* ---------------- STATUS FILTER ---------------- */
 
+if (statusParam) {
+  const statusArray = statusParam.split(",");
+  filter.status = { $in: statusArray };
+}
+    
     /* ---------------- DATE FILTER ---------------- */
     const monthNames = [
       "january", "february", "march", "april", "may", "june",

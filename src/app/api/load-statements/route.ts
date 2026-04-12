@@ -2,7 +2,7 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "../../../../lib/mongodb";
-import "../../../../models/index.ts"; // Ensure all models are registered
+
 import { LoadStatement } from "../../../../models/LoadStatement";
 
 const monthMap: Record<string, number> = {

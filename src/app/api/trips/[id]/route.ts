@@ -2,52 +2,38 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "../../../../../lib/mongodb";
 import { Trip } from "../../../../../models/Trip";
 import { Branch } from "../../../../../models/Branch"; // ✅ REQUIRED
+import { requireRole } from "lib/auth";
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     await connectToDatabase();
 
-    const { id } = await context.params;
+    const auth = await requireRole(req, ["admin", "super_admin", "agent"]);
+    if (auth instanceof NextResponse) return auth;
 
-    if (!id) {
-      return NextResponse.json(
-        { error: "Trip ID is required" },
-        { status: 400 }
-      );
-    }
-
-    const trip = await Trip.findById(id)
-      .populate("branch", "name city phone address")
+    const trip = await Trip.findById(params.id)
       .populate({
-        path: "bills",
-        populate: [
-          {
-            path: "consigner",
-            select: "name phone address",
-          },
-          {
-            path: "consignees",
-            select: "name phone numOfParcels type amount address",
-          },
-        ],
-      });
+    path: "bills",
+    populate: [
+      { path: "fromBranch", select: "name" },
+      { path: "toBranch", select: "name" }
+    ]
+  })
+  .populate("originBranch", "name")
+  .populate("destinationBranch", "name")
+  .lean();;
 
     if (!trip) {
-      return NextResponse.json(
-        { error: "Trip not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Trip not found" }, { status: 404 });
     }
 
-    return NextResponse.json(trip, { status: 200 });
-  } catch (error) {
-    console.error("Error fetching trip by ID:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch trip" },
-      { status: 500 }
-    );
+    return NextResponse.json(trip);
+
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: "Failed to fetch trip" }, { status: 500 });
   }
 }
