@@ -1,19 +1,17 @@
 // lib/mongodb.ts
-import mongoose from 'mongoose';
-import  { initSuperAdmin } from './initSuperAdmin';
+import mongoose from "mongoose";
+import { initSuperAdmin } from "./initSuperAdmin";
 
-const MONGODB_URI = process.env.MONGODB_URI!;
-
-
-if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable');
-}
+const MONGODB_URI = process.env.MONGODB_URI;
 
 let cached = (global as any).mongoose || { conn: null, promise: null };
-
 let isInitialized = false;
 
 export async function connectToDatabase() {
+  if (!MONGODB_URI) {
+    throw new Error("MONGODB_URI is not defined");
+  }
+
   if (cached.conn) return cached.conn;
 
   if (!cached.promise) {
@@ -21,9 +19,11 @@ export async function connectToDatabase() {
   }
 
   cached.conn = await cached.promise;
-   if (!isInitialized) {
+
+  if (!isInitialized) {
     await initSuperAdmin();
     isInitialized = true;
   }
+
   return cached.conn;
 }
