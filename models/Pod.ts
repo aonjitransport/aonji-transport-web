@@ -56,5 +56,8 @@ const PodSchema = new Schema<IPod>(
   { timestamps: true }
 );
 
+// ✅ Index for faster queue queries
+PodSchema.index({ status: 1, createdAt: 1 });
+
 export const Pod =
   mongoose.models.Pod || mongoose.model<IPod>("Pod", PodSchema);
