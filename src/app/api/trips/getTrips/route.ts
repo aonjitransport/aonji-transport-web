@@ -7,6 +7,7 @@ import { requireRole } from "@/../../lib/auth";
 import { Trip } from "@../../models/Trip";
 
 // GET /api/trips/getTrips?branchId=xxx&status=COMPLETED&timeRange=all&role=origin|destination|both
+export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   await connectToDatabase();
 
