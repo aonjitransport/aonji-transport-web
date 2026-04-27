@@ -9,6 +9,8 @@ import { TbCashRegister } from "react-icons/tb";
 import { FaClipboardList } from "react-icons/fa6";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useEffect, useState } from "react";
+import { GrDocumentVerified } from "react-icons/gr";
+
 import { usePathname } from "next/navigation";  
 
 
@@ -57,7 +59,7 @@ const Dashbord = () => {
           className=" flex flex-col justify-center items-center  h-64 w-auto lg:h-72 bg-blue-900 shadow-md hover:shadow-2xl lg:rounded-2xl rounded-xl "
         >
           <LiaFileInvoiceSolid color="white" className=" w-20 lg:w-44 h-auto" />
-          <div className="text-white  ">Invoice Console</div>
+          <div className="text-gray-100  ">Invoice Console</div>
         </Link>): null}
 
         <Link
@@ -66,7 +68,7 @@ const Dashbord = () => {
         >
           <MdListAlt className="w-20 lg:w-44 h-auto " color="white" />
 
-          <div className="text-white">Invoice List</div>
+          <div className="text-gray-100">Invoice List</div>
         </Link>
 
         {role === "super_admin" || role === "admin" ? (
@@ -75,8 +77,24 @@ const Dashbord = () => {
             className=" flex flex-col justify-center items-center h-64 w-auto lg:h-72 bg-blue-900 shadow-md hover:shadow-2xl lg:rounded-2xl rounded-xl "
           >
             <FaPeopleGroup className=" w-20 lg:w-44 h-auto " color="white" />
-            <div className="text-white">Agencies</div>
+            <div className="text-gray-100">Agencies</div>
           </Link>
+          
+
+
+        ) : null}
+
+         {role === "super_admin" || role === "admin" ? (
+          <Link
+            href="/admin/pod/verification"
+            className=" flex flex-col justify-center items-center h-64 w-auto lg:h-72 bg-blue-900 shadow-md hover:shadow-2xl lg:rounded-2xl rounded-xl "
+          >
+            <GrDocumentVerified className=" w-20 lg:w-36 h-auto " color="white" />
+            <div className="text-gray-100 mt-6">POD Verification</div>
+          </Link>
+          
+
+
         ) : null}
 
         {role === "agent" ? (
@@ -85,7 +103,7 @@ const Dashbord = () => {
             className=" flex flex-col justify-center items-center h-64 w-auto lg:h-72 bg-blue-900 shadow-md hover:shadow-2xl lg:rounded-2xl rounded-xl "
           >
             <TbCashRegister className=" w-20 lg:w-44 h-auto " color="white" />
-            <div className="text-white">Load Statements</div>
+            <div className="text-gray-100">Load Statements</div>
           </Link>
         ) : null}
 
@@ -94,7 +112,7 @@ const Dashbord = () => {
           className=" flex flex-col justify-center items-center h-64 w-auto lg:h-72 bg-blue-900 shadow-md hover:shadow-2xl lg:rounded-2xl rounded-xl "
         >
           <FaClipboardList className=" w-20 lg:w-44 h-auto " color="white" />
-          <div className="text-white">Trip Sheets</div>
+          <div className="text-gray-100">Trip Sheets</div>
         </Link>
       </div>
     </>

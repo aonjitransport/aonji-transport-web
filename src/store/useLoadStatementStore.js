@@ -6,24 +6,19 @@ export const useLoadStatementsStore = create((set, get) => ({
   error: null,
 
   // ✅ Fetch statements by agency
- fetchLoadStatements: async (branchId, filters = {}) => {
-  try {
-    set({ loading: true });
-    const params = new URLSearchParams({
-      branch: branchId,
-      month: filters.month || "",
-      year: filters.year || "",
-      paymentStatus:
-        filters.paymentStatus !== undefined ? filters.paymentStatus : "",
-    }).toString();
-
-    const res = await fetch(`/api/load-statements?${params}`);
-    const data = await res.json();
-    set({ loadStatements: data, loading: false });
-  } catch (err) {
-    console.error("Error fetching load statements:", err);
-    set({ error: "Failed to fetch load statements", loading: false });
-  }
+// In useLoadStatementStore — the fetch should look like:
+fetchLoadStatements: async (branchId, filters) => {
+  if (!branchId) return; // ✅ guard here too
+  const params = new URLSearchParams();
+  params.set("branchId", branchId);
+  if (filters.month) params.set("month", filters.month);
+  if (filters.year) params.set("year", filters.year);
+  
+  const res = await fetch(`/api/load-statements?${params.toString()}`, {
+    credentials: "include",
+  });
+  const data = await res.json();
+  set({ loadStatements: data });
 },
 
 

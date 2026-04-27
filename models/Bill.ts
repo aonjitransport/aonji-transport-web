@@ -1,3 +1,4 @@
+// models/Bill.ts
 import mongoose from "mongoose";
 import { Counter } from "./Counter";
 
@@ -57,6 +58,10 @@ const BillSchema = new mongoose.Schema(
       type: String,
       default: "Origin Branch" // ✅ important
     },
+
+    podDocument: { type: String, default: null },      // S3 key
+    podVerified: { type: Boolean, default: false },
+    podVerifiedAt: { type: Date },
 
     statusHistory: [
       {

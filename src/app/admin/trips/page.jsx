@@ -1,12 +1,15 @@
 "use client";
-import React, { useRef, useEffect,useState, use } from "react";
+import React, { useRef, useEffect, useState, use } from "react";
 import { AgGridReact } from "ag-grid-react";
 
+import Link from "next/link";
 import PDFBillListDocument from "../bills/components/PDFDocument/PDFBillListDocument";
-import TripSheetPDFDocument from "./components/TripSheetPDFDocument"
+import TripSheetPDFDocument from "./components/TripSheetPDFDocument";
 import TextField from "@mui/material/TextField";
 import Autocomplete from "@mui/material/Autocomplete";
 import InputLabel from "@mui/material/InputLabel";
+import { MdFileUpload } from "react-icons/md";
+
 import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
 import Select from "@mui/material/Select";
@@ -26,10 +29,7 @@ import {
 // ✅ Register required module
 ModuleRegistry.registerModules([ClientSideRowModelModule]);
 
-
-
 // Utility function to get years from a starting year to the current year
-
 
 function getYearsFromYearToCurrent(startYear) {
   const currentYear = new Date().getFullYear();
@@ -42,29 +42,28 @@ function getYearsFromYearToCurrent(startYear) {
 
 const Page = () => {
   const gridRef = useRef(null);
- 
+
   const branches = useBranchStore((state) => state.branches);
   const fetchBranches = useBranchStore((state) => state.fetchBranches);
-  const {trips , fetchTrips} = useTripsStore();
-    const user = useAuthStore((state) => state.user);
-      const fetchMe = useAuthStore((state) => state.fetchMe);
-      const hasHydrated = useAuthStore((state) => state.hasHydrated);
-      useEffect(() => {
-      if (hasHydrated && !user) {
-        fetchMe();
-      }
-      }, [hasHydrated, user, fetchMe]);
-  
- 
-  const [years, setYears] = React.useState([])
+  const { trips, fetchTrips } = useTripsStore();
+  const user = useAuthStore((state) => state.user);
+  const fetchMe = useAuthStore((state) => state.fetchMe);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
+  useEffect(() => {
+    if (hasHydrated && !user) {
+      fetchMe();
+    }
+  }, [hasHydrated, user, fetchMe]);
+
+  const [years, setYears] = React.useState([]);
   const [dateObj] = React.useState(new Date());
 
   const [reqBody, setReqBody] = useState({
-  month: "",
-  year: new Date().getFullYear(),
-  branch: "",
-  direction: "OUTGOING" // 👈 default
-});
+    month: "",
+    year: new Date().getFullYear(),
+    branch: "",
+    direction: "OUTGOING", // 👈 default
+  });
 
   const handleReqBodyInputChange = (field, value) => {
     setReqBody((prev) => ({
@@ -77,20 +76,18 @@ const Page = () => {
 
   useEffect(() => {
     fetchBranches();
-  }, [fetchBranches, ]);
+  }, [fetchBranches]);
 
-const downloadTripPDF = async (trip) => {
-  const blob = await pdf(
-    <TripSheetPDFDocument trip={trip} />
-  ).toBlob();
+  const downloadTripPDF = async (trip) => {
+    const blob = await pdf(<TripSheetPDFDocument trip={trip} />).toBlob();
 
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `trip-${trip.tripId}.pdf`;
-  link.click();
-  URL.revokeObjectURL(url);
-};
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `trip-${trip.tripId}.pdf`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const months = [
     "january",
@@ -109,85 +106,106 @@ const downloadTripPDF = async (trip) => {
 
   const colDefs = [
     { headerName: "Trip ID", field: "tripId", sortable: true, filter: true },
-    { headerName: "Date", field: "createdAt",
+    {
+      headerName: "Date",
+      field: "createdAt",
       valueFormatter: (p) => {
         const date = new Date(p.value);
         return date.toLocaleDateString("en-GB");
       },
-      sortable: true, filter: true },  
-    { headerName: "Branch", valueGetter: (params) => params.data?.destinationBranch?.name || "", sortable: true, filter: true },
-   
+      sortable: true,
+      filter: true,
+    },
+    {
+      headerName: "Branch",
+      valueGetter: (params) => params.data?.destinationBranch?.name || "",
+      sortable: true,
+      filter: true,
+    },
+
     { headerName: "Qty", field: "totalArticels", sortable: true, filter: true },
-    { headerName: "Amount", field: "totalAmount", sortable: true, filter: true },
-    { headerName: "unpaid", field: "totalUnpaidAmount", sortable: true, filter: true },
-    { headerName: "Balance due", field: "netPayableAmount", sortable: true, filter: true },
+    {
+      headerName: "Amount",
+      field: "totalAmount",
+      sortable: true,
+      filter: true,
+    },
+    {
+      headerName: "unpaid",
+      field: "totalUnpaidAmount",
+      sortable: true,
+      filter: true,
+    },
+    {
+      headerName: "Balance due",
+      field: "netPayableAmount",
+      sortable: true,
+      filter: true,
+    },
     {
       headerName: "Status",
       field: "status",
-      cellRenderer: (params) => { 
+      cellRenderer: (params) => {
         const statusColors = {
           PLANNED: "gray",
-          IN_TRANSIT: "blue", 
+          IN_TRANSIT: "blue",
           REACHED: "orange",
           COMPLETED: "green",
-        };  
+        };
         return (
-          <span style={{ color: statusColors[params.value] || "black", fontWeight: "bold" }}>
+          <span
+            style={{
+              color: statusColors[params.value] || "black",
+              fontWeight: "bold",
+            }}
+          >
             {params.value}
           </span>
         );
-      }
+      },
     },
-  
-   
+
     {
-      headerName:"download PDF",
-      field:"_id",
-      width:140,
+      headerName: "download PDF",
+      field: "_id",
+      width: 140,
       cellRenderer: (params) => {
         return (
-      <button
-        className="px-3 py-1 bg-blue-600 text-white rounded"
-        onClick={() => downloadTripPDF(params.data)}
-      >
-        Download
-      </button>
-         );
-       },
+          <button
+            className="px-3 py-1 bg-blue-600 text-white rounded"
+            onClick={() => downloadTripPDF(params.data)}
+          >
+            Download
+          </button>
+        );
+      },
     },
     {
-  headerName: "View",
-  field: "_id",
-  cellRenderer: (params) => {
-    return (
-      <button
-        className="px-3 py-1 bg-green-600 text-white rounded"
-        onClick={() => {
-          window.location.href = `/admin/trips/${params.data._id}`;
-        }}
-      >
-        View Bills
-      </button>
-    );
-  }
-}
+      headerName: "View",
+      field: "_id",
+      cellRenderer: (params) => {
+        return (
+          <button
+            className="px-3 py-1 bg-green-600 text-white rounded"
+            onClick={() => {
+              window.location.href = `/admin/trips/${params.data._id}`;
+            }}
+          >
+            View Bills
+          </button>
+        );
+      },
+    },
+  ];
 
-  ]
-
-  
   const CustomNoRowsOverlay = () => {
-  return (
-    <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
-      <h3>No bills found</h3>
-      <p>Try adjusting your filters or add a new bill.</p>
-    </div>
-  );
-};
-  
-
-
-  
-
+    return (
+      <div style={{ padding: "20px", textAlign: "center", color: "#999" }}>
+        <h3>No bills found</h3>
+        <p>Try adjusting your filters or add a new bill.</p>
+      </div>
+    );
+  };
 
   useEffect(() => {
     const newYears = getYearsFromYearToCurrent(2024);
@@ -197,72 +215,86 @@ const downloadTripPDF = async (trip) => {
     handleReqBodyInputChange("year", dateObj.getFullYear());
   }, []);
 
-useEffect(() => {
-  if (!user || branches.length === 0) return;
+  useEffect(() => {
+    if (!user || branches.length === 0) return;
 
-  if (user.role === "agent") {
-    setReqBody((prev) => ({
-      ...prev,
-      branch: user.branchId
-    }));
-  }
+    if (user.role === "agent") {
+      setReqBody((prev) => ({
+        ...prev,
+        branch: user.branchId,
+      }));
+    }
 
-  if (user.role === "admin") {
-    setReqBody((prev) => ({
-      ...prev,
-      branch: user.branchId
-    }));
-  }
+    if (user.role === "admin") {
+      setReqBody((prev) => ({
+        ...prev,
+        branch: user.branchId,
+      }));
+    }
 
-  if (user.role === "super_admin") {
-    setReqBody((prev) => ({
-      ...prev,
-      branch: ""
-    }));
-  }
-
-}, [user, branches]);
+    if (user.role === "super_admin") {
+      setReqBody((prev) => ({
+        ...prev,
+        branch: "",
+      }));
+    }
+  }, [user, branches]);
 
   // Month/year defaults
-useEffect(() => {
-  const months = [
-    "january","february","march","april","may","june",
-    "july","august","september","october","november","december",
-  ];
-  const now = new Date();
-  handleReqBodyInputChange("month", months[now.getMonth()]);
-  handleReqBodyInputChange("year", now.getFullYear());
-}, []);
+  useEffect(() => {
+    const months = [
+      "january",
+      "february",
+      "march",
+      "april",
+      "may",
+      "june",
+      "july",
+      "august",
+      "september",
+      "october",
+      "november",
+      "december",
+    ];
+    const now = new Date();
+    handleReqBodyInputChange("month", months[now.getMonth()]);
+    handleReqBodyInputChange("year", now.getFullYear());
+  }, []);
 
   console.log("reqBody:", reqBody);
-  
+
   console.log("tripsStore:", trips);
 
   // ✅ Fetch trips only when all required filters are ready
-useEffect(() => {
-  if (reqBody.month && reqBody.year) {
-    fetchTrips(reqBody);
-  }
-}, [reqBody.month, reqBody.year, reqBody.branch, reqBody.direction]);
-
-  
+  useEffect(() => {
+    if (reqBody.month && reqBody.year) {
+      fetchTrips(reqBody);
+    }
+  }, [reqBody.month, reqBody.year, reqBody.branch, reqBody.direction]);
 
   return (
     <>
       <div className="flex p-2 gap-2 justify-end align-top">
+        <Link
+          href="/admin/pod/upload"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:shadow-lg transition-all"
+        >
+          <MdFileUpload className="w-5 h-5" />
+          <span>Upload PODs</span>
+        </Link>
+
         {/* ✅ Controlled Select */}
         <Tabs
-  value={reqBody.direction}
-  onChange={(e, value) => handleReqBodyInputChange("direction", value)}
-  textColor="primary"
-  indicatorColor="primary"
->
-  <Tab value="ALL" label="ALL" />
-  <Tab value="OUTGOING" label="OUTGOING" />
-  <Tab value="INCOMING" label="INCOMING" />
-</Tabs>
+          value={reqBody.direction}
+          onChange={(e, value) => handleReqBodyInputChange("direction", value)}
+          textColor="primary"
+          indicatorColor="primary"
+        >
+          <Tab value="ALL" label="ALL" />
+          <Tab value="OUTGOING" label="OUTGOING" />
+          <Tab value="INCOMING" label="INCOMING" />
+        </Tabs>
         <FormControl sx={{ minWidth: 120 }}>
-
           <Select
             labelId="year-label"
             value={reqBody.year} // ✅ always controlled
@@ -296,27 +328,25 @@ useEffect(() => {
 
         {/* ✅ Controlled Autocomplete */}
         <Autocomplete
-  disablePortal
-  options={
-    user?.role === "super_admin"
-      ? [{ _id: "", name: "All Branches" }, ...branches]
-      : branches
-  }
-  getOptionLabel={(option) => option.name}
-  sx={{ width: 300 }}
-  value={
-    user?.role === "super_admin" && !reqBody.branch
-      ? { _id: "", name: "All Branches" }
-      : branches.find((b) => b._id === reqBody.branch) || null
-  }
-  onChange={(event, value) =>
-    handleReqBodyInputChange("branch", value?._id || "")
-  }
-  disabled={user?.role === "agent"}   // 🔒 agent cannot change
-  renderInput={(params) => (
-    <TextField {...params} label="Branch" />
-  )}
-/>
+          disablePortal
+          options={
+            user?.role === "super_admin"
+              ? [{ _id: "", name: "All Branches" }, ...branches]
+              : branches
+          }
+          getOptionLabel={(option) => option.name}
+          sx={{ width: 300 }}
+          value={
+            user?.role === "super_admin" && !reqBody.branch
+              ? { _id: "", name: "All Branches" }
+              : branches.find((b) => b._id === reqBody.branch) || null
+          }
+          onChange={(event, value) =>
+            handleReqBodyInputChange("branch", value?._id || "")
+          }
+          disabled={user?.role === "agent"} // 🔒 agent cannot change
+          renderInput={(params) => <TextField {...params} label="Branch" />}
+        />
       </div>
 
       <div

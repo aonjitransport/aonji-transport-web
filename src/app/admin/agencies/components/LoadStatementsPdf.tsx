@@ -39,7 +39,7 @@ interface loadStatementData{
   };
   totalFreightAmount:number;
   balanceDue:number;
-  paymentStatus:boolean;
+  paymentStatus:String;
   month:number;
   year:number;
 
@@ -210,7 +210,8 @@ const PDFBillListDocument: React.FC<loadStatementDataProps> = ({ loadStatementDa
         <View style={styles.totalRow}>
           <Text>Balance Due: Rs.{loadStatementData?.balanceDue} /-</Text>
         </View>
-{loadStatementData?.paymentStatus ? (
+       
+{loadStatementData?.paymentStatus ==="paid" ? (
   <View
     style={{
       position: "absolute",
@@ -251,7 +252,7 @@ const PDFBillListDocument: React.FC<loadStatementDataProps> = ({ loadStatementDa
 )}
         </View>
 
-{loadStatementData?.paymentStatus ? (
+{loadStatementData?.paymentStatus==="paid" ? (
   <Text
     style={{
       marginTop: 30,

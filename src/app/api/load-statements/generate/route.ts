@@ -1,50 +1,18 @@
-// src/app/api/load-statements/generate/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "../../../../../lib/mongodb";
+import { requireRole } from "../../../../../lib/auth";
 import { LoadStatement } from "../../../../../models/LoadStatement";
 import { Trip } from "../../../../../models/Trip";
 import { Branch } from "../../../../../models/Branch";
-import { Message } from "../../../../../models/Message";
-
-const monthMap: Record<string, number> = {
-  january: 1,
-  february: 2,
-  march: 3,
-  april: 4,
-  may: 5,
-  june: 6,
-  july: 7,
-  august: 8,
-  september: 9,
-  october: 10,
-  november: 11,
-  december: 12,
-};
-
-
-/* =========================
-   GENERATE LOAD STATEMENT
-========================= */
 
 export async function POST(req: NextRequest) {
+  const auth = await requireRole(req, ["admin", "super_admin"]);
+  if (auth instanceof NextResponse) return auth;
+
+  await connectToDatabase();
+
   try {
-    await connectToDatabase();
-
-    let { branchId, month, year } = await req.json();
-
-    // ✅ Normalize month
-if (typeof month === "string") {
-  const m = monthMap[month.toLowerCase()];
-  if (!m) {
-    return NextResponse.json(
-      { error: "Invalid month value" },
-      { status: 400 }
-    );
-  }
-  month = m;
-}
-
-    
+    const { branchId, month, year } = await req.json();
 
     if (!branchId || !month || !year) {
       return NextResponse.json(
@@ -53,97 +21,81 @@ if (typeof month === "string") {
       );
     }
 
-    // ✅ Validate branch
-    const branch = await Branch.findById(branchId);
-    if (!branch) {
+    const monthNum = Number(month);
+    const yearNum = Number(year);
+
+    if (isNaN(monthNum) || isNaN(yearNum)) {
       return NextResponse.json(
-        { error: "Branch not found" },
-        { status: 404 }
+        { error: "month and year must be valid numbers" },
+        { status: 400 }
       );
     }
 
-    // ✅ Month date range
-    const startOfMonth = new Date(Date.UTC(year, month - 1, 1));
-    const endOfMonth = new Date(Date.UTC(year, month, 1));
-
-    // ✅ Prevent duplicate load statement
-    const existingStatement = await LoadStatement.findOne({
+    // Check if already exists
+    const existing = await LoadStatement.findOne({
       branch: branchId,
-      month,
-      year,
+      month: monthNum,
+      year: yearNum,
     });
 
-    if (existingStatement) {
+    if (existing) {
       return NextResponse.json(
-        { error: "Load statement already exists for this branch and month" },
+        { error: `Statement already exists: ${existing.loadStatementId}` },
         { status: 409 }
       );
     }
 
-    // ✅ Fetch trips
+    // Find COMPLETED trips for this branch in this month
+    const startDate = new Date(Date.UTC(yearNum, monthNum - 1, 1));
+    const endDate = new Date(Date.UTC(yearNum, monthNum, 1));
+
     const trips = await Trip.find({
-      branch: branchId,
-      createdAt: { $gte: startOfMonth, $lt: endOfMonth },
+      destinationBranch: branchId,
+      status: "COMPLETED",
+      createdAt: { $gte: startDate, $lt: endDate },
     });
 
-    if (!trips.length) {
+    if (trips.length === 0) {
       return NextResponse.json(
-        { error: "No trips found for this branch in the given month" },
+        { error: "No completed trips found for this branch in the selected month" },
         { status: 404 }
       );
     }
 
-    // ✅ Calculations (matches your Trip schema perfectly)
-   const totalFreightAmount = Number(
-  trips.reduce((sum, t) => sum + (t.totalAmount || 0), 0).toFixed(2)
-);
+    // Calculate totals
+    const totalFreightAmount = trips.reduce(
+      (sum, t) => sum + (t.totalAmount || 0), 0
+    );
+    const agencyCommission = trips.reduce(
+      (sum, t) => sum + (t.agencyCharges?.chargeAmount || 0), 0
+    );
+    const netPayableToMain = totalFreightAmount - agencyCommission;
 
-const balanceDue = Number(
-  trips.reduce((sum, t) => sum + (t.netPayableAmount || 0), 0).toFixed(2)
-);
+    // Generate unique ID e.g. LS-KDPA-2026-04
+    const branchDoc = await Branch.findById(branchId).select("code");
+    const monthStr = String(monthNum).padStart(2, "0");
+    const loadStatementId = `LS-${branchDoc?.code || "XX"}-${yearNum}-${monthStr}`;
 
-    // ✅ Load Statement ID (stable & readable)
-    const monthStr = String(month).padStart(2, "0");
-    const yearStr = String(year).slice(-2);
-    const loadStatementId = `LS-${branch.code}-${monthStr}${yearStr}`;
-
-    // ✅ Create statement
     const statement = await LoadStatement.create({
       loadStatementId,
       branch: branchId,
-      trips: trips.map(t => t._id),
+      trips: trips.map((t) => t._id),
       totalFreightAmount,
-      balanceDue,
-      month,
-      year,
-      paymentStatus: "pending",
+      agencyCommission,
+      netPayableToMain,
+      balanceDue: netPayableToMain,
+      paidAmount: 0,
+      paymentStatus: "pending",  // ✅ was: false (boolean) — now string enum
+      month: monthNum,
+      year: yearNum,
     });
 
-    // ✅ Create system notification
-    try {
-      const monthName = Object.entries(monthMap).find(([_, m]) => m === month)?.[0] || String(month);
-      await Message.create({
-        branch: branchId,
-        sender: null,
-        senderName: "System",
-        senderRole: "system",
-        type: "LOAD_STATEMENT_GENERATED",
-        title: "Load Statement Generated",
-        content: `Load Statement #${loadStatementId} has been generated for ${monthName} ${year}. Total freight: ₹${totalFreightAmount}. Due: ₹${balanceDue}`,
-      });
-    } catch (msgError) {
-      console.error("Error creating notification message:", msgError);
-      // Don't fail the statement generation if message creation fails
-    }
+    return NextResponse.json(statement, { status: 201 });
 
-    return NextResponse.json({
-      message: "Load statement generated successfully",
-      statement,
-    });
-  } catch (error) {
-    console.error("Error generating load statement:", error);
+  } catch (err) {
+    console.error("❌ GENERATE LOAD STATEMENT ERROR:", err);
     return NextResponse.json(
-      { error: "Failed to generate load statement" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

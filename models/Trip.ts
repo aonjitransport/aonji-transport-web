@@ -1,3 +1,4 @@
+// models/Trip.ts
 import mongoose, { Schema } from "mongoose";
 import { Boogaloo } from "next/font/google";
 

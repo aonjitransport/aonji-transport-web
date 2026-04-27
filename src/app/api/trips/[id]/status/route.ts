@@ -19,141 +19,102 @@ export async function PATCH(
     if (auth instanceof NextResponse) return auth;
 
     const userBranchId = new mongoose.Types.ObjectId(auth.user.branchId);
+    const { status } = await req.json();
 
-    const body = await req.json();
-    const { status } = body;
+    /* ── VALID TRIP STATUSES (manual transitions only) ── */
+    const manualStatuses = ["IN_TRANSIT", "REACHED"];
 
-    /* ---------------- VALIDATION ---------------- */
-
-    const allowedStatuses = [
-      "PLANNED",
-      "IN_TRANSIT",
-      "REACHED",
-      "COMPLETED",
-    ];
-
-    if (!status || !allowedStatuses.includes(status)) {
-      return NextResponse.json(
-        { error: "Invalid status" },
-        { status: 400 }
-      );
+    if (!status || !manualStatuses.includes(status)) {
+      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
     session.startTransaction();
 
     const trip = await Trip.findById(params.id).session(session);
-
-    if (!trip) {
-      throw new Error("Trip not found");
-    }
-
-    const incompleteBills = await Bill.countDocuments({
-  _id: { $in: trip.bills },
-  status: { $nin: ["DELIVERED", "POD_RECEIVED"] }
-});
-
-if (status === "COMPLETED" && incompleteBills > 0) {
-  return NextResponse.json(
-    { error: "All bills must be delivered before completing trip" },
-    { status: 400 }
-  );
-}
+    if (!trip) throw new Error("Trip not found");
 
     if (trip.status === status) {
-  return NextResponse.json(
-    { error: "Trip already in this status" },
-    { status: 400 }
-  );
-}
+      await session.abortTransaction();
+      session.endSession();
+      return NextResponse.json({ error: "Trip already in this status" }, { status: 400 });
+    }
 
     const isOrigin = trip.originBranch.equals(userBranchId);
     const isDestination = trip.destinationBranch.equals(userBranchId);
 
-    /* ---------------- STATUS FLOW CONTROL ---------------- */
-
-    const validTransitions: any = {
-      PLANNED: ["IN_TRANSIT"],
+    /* ── VALID TRIP TRANSITIONS ──
+       PLANNED → IN_TRANSIT → REACHED → COMPLETED (auto)
+    ─────────────────────────────────────────────── */
+    const validTransitions: Record<string, string[]> = {
+      PLANNED:    ["IN_TRANSIT"],
       IN_TRANSIT: ["REACHED"],
-      REACHED: ["COMPLETED"],
-      COMPLETED: [],
+      REACHED:    [],       // COMPLETED is automatic — triggered by POD verification
+      COMPLETED:  [],
     };
 
     if (!validTransitions[trip.status]?.includes(status)) {
+      await session.abortTransaction();
+      session.endSession();
       return NextResponse.json(
-        { error: `Invalid transition from ${trip.status} → ${status}` },
+        { error: `Invalid transition: ${trip.status} → ${status}` },
         { status: 400 }
       );
     }
 
-    /* ---------------- ROLE RULES ---------------- */
-
+    /* ── BRANCH PERMISSION RULES ── */
     if (status === "IN_TRANSIT" && !isOrigin) {
+      await session.abortTransaction();
+      session.endSession();
       return NextResponse.json(
-        { error: "Only origin branch can start trip" },
+        { error: "Only origin branch can start the trip" },
         { status: 403 }
       );
     }
 
     if (status === "REACHED" && !isDestination) {
+      await session.abortTransaction();
+      session.endSession();
       return NextResponse.json(
-        { error: "Only destination branch can mark as reached" },
+        { error: "Only destination branch can mark trip as reached" },
         { status: 403 }
       );
     }
 
-    if (status === "COMPLETED" && !isDestination) {
-      return NextResponse.json(
-        { error: "Only destination branch can complete trip" },
-        { status: 403 }
-      );
-    }
-
-    /* ---------------- UPDATE TRIP ---------------- */
-
+    /* ── UPDATE TRIP ── */
     trip.status = status;
+    trip.statusHistory.push({
+      status,
+      date: new Date(),
+      updatedBy: auth.user.id,
+    });
     await trip.save({ session });
 
-      await Trip.updateOne( 
-        { _id: trip._id },
-        {
-          $push: {  
-            statusHistory: {
-              status: status,
-              date: new Date(), 
-              updatedBy: auth.user.id,
-            },
-          },
-        },
-        { session }
-      );  
-        
+    /* ── AUTO SYNC BILLS when trip status changes ──
+       Trip IN_TRANSIT  → all bills: IN_TRANSIT
+       Trip REACHED     → all bills: ARRIVED_AT_BRANCH
 
-    /* ---------------- AUTO BILL SYNC ---------------- */
+       This enforces that bills CANNOT manually jump ahead of the trip.
+       The dependency is maintained here automatically.
+    ──────────────────────────────────────────────── */
+    const billSyncMap: Record<string, string> = {
+      IN_TRANSIT: "IN_TRANSIT",
+      REACHED:    "ARRIVED_AT_BRANCH",
+    };
 
-    let billStatus: string | null = null;
-
-    if (status === "IN_TRANSIT") {
-      billStatus = "IN_TRANSIT";
-    }
-
-    if (status === "REACHED") {
-      billStatus = "ARRIVED_AT_BRANCH";
-    }
-
-    // ❗ IMPORTANT: DO NOT AUTO COMPLETE BILLS
-    // Bills should be delivered individually
-    // So we skip COMPLETED → DELIVERED
+    const billStatus = billSyncMap[status];
 
     if (billStatus) {
+      const locationMap: Record<string, string> = {
+        IN_TRANSIT:         "On Route",
+        ARRIVED_AT_BRANCH:  "Destination Branch",
+      };
+
       await Bill.updateMany(
         { _id: { $in: trip.bills } },
         {
           $set: {
             status: billStatus,
-            currentLocation:
-              status === "REACHED"
-                ? "At Destination Branch"
-                : "On Route",
+            currentLocation: locationMap[billStatus],
           },
           $push: {
             statusHistory: {
@@ -172,18 +133,13 @@ if (status === "COMPLETED" && incompleteBills > 0) {
 
     return NextResponse.json({
       success: true,
-      message: "Trip status updated successfully",
+      message: `Trip updated to ${status}. Bills auto-synced to ${billSyncMap[status] || status}.`,
     });
 
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-
     console.error("Trip status update failed:", error);
-
-    return NextResponse.json(
-      { error: "Failed to update trip status" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to update trip status" }, { status: 500 });
   }
 }

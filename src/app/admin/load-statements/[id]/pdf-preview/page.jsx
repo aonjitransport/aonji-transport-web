@@ -1,3 +1,4 @@
+//src/app/admin/load-statements/[id]/pdf-preview
 "use client";
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -11,6 +12,7 @@ export default function PDFPreviewPage() {
 
 useEffect(() => {
   if (!id) return;
+  console.log("id sent",id)
   fetch(`/api/load-statements/${id}`)
     .then(res => res.json())
     .then(data => setLoadStatement(data))

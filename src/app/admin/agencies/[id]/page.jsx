@@ -7,7 +7,7 @@ import { useParams } from "next/navigation";
 import Chip from "@mui/material/Chip";
 import { useLoadStatementsStore } from "../../../../store/useLoadStatementStore"; // ✅ new store
 import { useAuthStore } from "../../../../store/useAuthStore";
-
+import Link from "next/link";
 import { AgGridReact } from "ag-grid-react";
 import useBranchStore from "../../../../store/branchStore";
 import {
@@ -97,6 +97,18 @@ const AgencyPage = () => {
     month: "",
     year: "",
   });
+
+  const [tripSummary, setTripSummary] = useState({
+    totalTrips: 0,
+    completed: 0,
+    inTransit: 0,
+    pending: 0,
+    reached: 0,
+    totalRevenue: 0,
+    netPayable: 0,
+    totalArticles: 0,
+  });
+  const [tripTimeRange, setTripTimeRange] = useState("all");
 
   // ✅ Month & Year options
   const months = [
@@ -217,6 +229,7 @@ const AgencyPage = () => {
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             amount: Number(paymentPayload.amount),
             note: paymentPayload.note,
@@ -281,6 +294,32 @@ const AgencyPage = () => {
     }
   };
 
+  useEffect(() => {
+    if (!branch?._id) return;
+    fetch(
+      `/api/trips/getTrips?branchId=${branch._id}&timeRange=${tripTimeRange}&role=both`,
+    )
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.summary) setTripSummary(data.summary);
+      })
+      .catch((err) => console.error("Trips fetch error:", err));
+  }, [branch?._id, tripTimeRange]);
+
+  // ✅ Add these computed values — derived from loadStatements already in component
+  const totalBalanceDue = loadStatements.reduce(
+    (sum, s) => sum + (s.balanceDue || 0),
+    0,
+  );
+  const totalPaid = loadStatements.reduce(
+    (sum, s) => sum + (s.paidAmount || 0),
+    0,
+  );
+  const hasOutstanding = totalBalanceDue > 0;
+  const pendingStatements = loadStatements.filter(
+    (s) => s.paymentStatus !== "paid",
+  ).length;
+
   if (!branch) return <p>Loading...</p>;
 
   // ✅ AG Grid columns
@@ -289,86 +328,128 @@ const AgencyPage = () => {
       headerName: "Month",
       field: "month",
       width: 120,
-      valueFormatter: (p) => months[p.value] || "-",
+      valueFormatter: (p) => {
+        const names = [
+          "",
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ];
+        return names[p.value] || "-";
+      },
     },
-    { headerName: "Year", field: "year", width: 100 },
-
+    {
+      headerName: "Year",
+      field: "year",
+      width: 90,
+    },
     {
       headerName: "Freight",
       field: "totalFreightAmount",
-      width: 140,
-      valueFormatter: (p) => `₹ ${p.value?.toFixed(2) || 0}`,
+      width: 130,
+      valueFormatter: (p) => `₹ ${Number(p.value || 0).toLocaleString()}`,
     },
-
+    {
+      headerName: "Commission",
+      field: "agencyCommission",
+      width: 130,
+      valueFormatter: (p) => `₹ ${Number(p.value || 0).toLocaleString()}`,
+      cellStyle: { color: "#16a34a" },
+    },
+    {
+      headerName: "Net Payable",
+      field: "netPayableToMain",
+      width: 130,
+      valueFormatter: (p) => `₹ ${Number(p.value || 0).toLocaleString()}`,
+      cellStyle: { fontWeight: "600" },
+    },
     {
       headerName: "Paid",
-      field: "totalFreightAmount",
-      width: 140,
-      valueFormatter: (p) => {
-        const paid = p.value - p.data.balanceDue;
-        return `₹ ${paid.toFixed(2)}`;
+      field: "paidAmount",
+      width: 120,
+      valueFormatter: (p) => `₹ ${Number(p.value || 0).toLocaleString()}`,
+      cellStyle: { color: "#2563eb" },
+    },
+    {
+      headerName: "Balance",
+      field: "balanceDue",
+      width: 120,
+      valueFormatter: (p) => `₹ ${Number(p.value || 0).toLocaleString()}`,
+      cellStyle: (p) => ({
+        color: p.value > 0 ? "#dc2626" : "#16a34a",
+        fontWeight: "700",
+      }),
+    },
+    {
+      headerName: "Status",
+      field: "paymentStatus",
+      width: 130,
+      cellRenderer: (p) => {
+        const map = {
+          paid: { label: "✅ Closed", cls: "bg-green-100 text-green-700" },
+          partial: { label: "⏳ Partial", cls: "bg-blue-100 text-blue-700" },
+          pending: { label: "🔴 Pending", cls: "bg-red-100 text-red-700" },
+        };
+        const s = map[p.value] || map.pending;
+        return (
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-semibold ${s.cls}`}
+          >
+            {s.label}
+          </span>
+        );
       },
     },
 
     {
-      headerName: "Balance",
-      field: "balanceDue",
-      width: 140,
-      valueFormatter: (p) => `₹ ${p.value?.toFixed(2) || 0}`,
-      cellStyle: (p) => ({
-        color: p.value > 0 ? "red" : "green",
-        fontWeight: "600",
-      }),
-    },
-
-    {
-      headerName: "Status",
-      field: "paymentStatus",
-      width: 120,
-      cellRenderer: (p) => (
-        <span
-          className={`px-2 py-1 rounded text-xs font-semibold ${
-            p.value
-              ? "bg-green-100 text-green-700"
-              : "bg-yellow-100 text-yellow-700"
-          }`}
-        >
-          {p.value ? "Closed" : "Pending"}
-        </span>
-      ),
-    },
-
-    {
-      headerName: "PDF",
-      field: "_id",
-      width: 120,
-      cellRenderer: (params) => (
-        <a
-          href={`/admin/load-statements/${params.data._id}/pdf-preview`}
-          target="_blank"
-          className="text-blue-600 underline text-sm"
-        >
-          Download
-        </a>
-      ),
-    },
-    {
       headerName: "Action",
       field: "_id",
-      width: 150,
-      cellRenderer: (params) =>
-        isAdmin ? (
-          <button
-            onClick={() =>
-              setPaymentModal({ open: true, statement: params.data })
-            }
-            className="text-blue-600 hover:text-blue-800 underline text-sm font-medium"
-          >
-            Record Payment
-          </button>
-        ) : (
-          <span className="text-gray-400 text-xs">View Only</span>
-        ),
+      width: 170,
+      cellRenderer: (p) => {
+        if (p.data.paymentStatus === "paid") {
+          return (
+            <span className="text-green-600 text-xs font-medium">
+              ✅ Fully Settled
+            </span>
+          );
+        }
+        if (isAdmin) {
+          return (
+            <button
+              onClick={() => setPaymentModal({ open: true, statement: p.data })}
+              className="bg-green-600 text-white text-xs px-3 py-1 rounded-lg hover:bg-green-700"
+            >
+              + Record Payment
+            </button>
+          );
+        }
+        return <span className="text-gray-400 text-xs">View Only</span>;
+      },
+    },
+   {
+      headerName: "View Bill",
+      field: "id", // You can use the "id" field for navigation
+      cellRenderer: (params) => {
+        const { _id } = params.data;
+        // Check if the data is available
+        if (_id) {
+          return (
+            <Link legacyBehavior href={`/admin/load-statements/${params.data._id}/pdf-preview`}>
+              <a className="text-blue-500 underline">View PDF</a>
+            </Link>
+          );
+        }
+        return null; // In case `id` is not available or params.data is undefined
+      },
     },
   ];
 
@@ -383,34 +464,51 @@ const AgencyPage = () => {
   };
 
   const generateLoadStatement = async () => {
-    // Implement the logic to generate load statements for all trips of the agency
-    console.log(
-      "Generating load statements for agency:",
-      branch._id,
-      "with payload:",
-      loadStatementPayload,
-    );
-    const response = await fetch(`/api/load-statements/generate/`, {
-      method: "POST",
-      body: JSON.stringify({ ...loadStatementPayload, branchId: branch._id }),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      setError(data.message || "Failed to generate load statements");
+    setError("");
+    setSuccessMessage("");
+
+    if (!loadStatementPayload.month || !loadStatementPayload.year) {
+      setError("Please select both month and year");
       return;
     }
-    if (response.ok) {
-      setSuccessMessage("Load statements generated successfully");
+
+    try {
+      const response = await fetch(`/api/load-statements/generate/`, {
+        method: "POST",
+        body: JSON.stringify({
+          month: Number(loadStatementPayload.month), // ✅ force number
+          year: Number(loadStatementPayload.year), // ✅ force number
+          branchId: branch._id,
+        }),
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+
+      // ✅ Safe JSON parse — won't crash on empty body
+      let data = {};
+      try {
+        data = await response.json();
+      } catch {
+        setError("Server error — check terminal for details");
+        return;
+      }
+
+      if (!response.ok) {
+        setError(data.error || "Failed to generate load statement");
+        return;
+      }
+
+      setSuccessMessage("Load statement generated successfully!");
+      fetchLoadStatements(branch._id, filters);
+
+      setTimeout(() => {
+        setGenerateLoadStatementsModal(false);
+        setSuccessMessage("");
+      }, 1500);
+    } catch (err) {
+      setError("Network error — please try again");
+      console.error(err);
     }
-
-    setError("");
-
-    console.log("Generate Load Statements Response:", data);
-    // Refresh load statements after generation
-    fetchLoadStatements(branch._id, filters);
   };
 
   const handleDeactivate = async () => {
@@ -554,8 +652,12 @@ const AgencyPage = () => {
             </div>
 
             {/* View Trips Button */}
-            <button className="flex items-center gap-1.5 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50">
-              View Trips <FaChevronRight className="text-xs" />
+
+            <button
+              onClick={() => setGenerateLoadStatementsModal(true)}
+              className="flex items-center gap-1.5 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50"
+            >
+              Generate Load Statements <FaChevronRight className="text-xs" />
             </button>
           </div>
 
@@ -632,18 +734,32 @@ const AgencyPage = () => {
             </div>
 
             {/* Unpaid */}
-            <div className="border rounded-xl p-3 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
-                <FaWallet className="text-red-400 text-sm" />
+            {/* Unpaid */}
+            <div
+              className={`border rounded-xl p-3 flex items-center gap-3 ${hasOutstanding ? "border-red-200 bg-red-50" : ""}`}
+            >
+              <div
+                className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${hasOutstanding ? "bg-red-100" : "bg-green-100"}`}
+              >
+                <FaWallet
+                  className={`text-sm ${hasOutstanding ? "text-red-400" : "text-green-500"}`}
+                />
               </div>
               <div>
-                <p className="text-xs text-gray-400">Unpaid Amount</p>
-                <p className="text-lg font-bold text-gray-800">
-                  ₹ {branch.totalUnpaidAmount || 0}
+                <p className="text-xs text-gray-400">Balance Due</p>
+                <p
+                  className={`text-lg font-bold ${hasOutstanding ? "text-red-600" : "text-gray-800"}`}
+                >
+                  ₹ {totalBalanceDue.toLocaleString()}
                 </p>
-                {(branch.totalUnpaidAmount || 0) === 0 && (
+                {!hasOutstanding ? (
                   <span className="text-[11px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">
                     No Dues
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-red-500">
+                    {pendingStatements} statement
+                    {pendingStatements > 1 ? "s" : ""} pending
                   </span>
                 )}
               </div>
@@ -748,18 +864,21 @@ const AgencyPage = () => {
                 </div>
 
                 {/* Unpaid */}
+                {/* Unpaid */}
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-2">
                     <span className="text-red-500 text-base leading-none mt-0.5">
                       ⚠
                     </span>
-                    <span className="text-gray-700">Unpaid Amount</span>
+                    <span className="text-gray-700">Balance Due</span>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-gray-800">
-                      ₹ {branch?.totalUnpaidAmount || 0}
+                    <p
+                      className={`font-semibold ${hasOutstanding ? "text-red-600" : "text-gray-800"}`}
+                    >
+                      ₹ {totalBalanceDue.toLocaleString()}
                     </p>
-                    {(branch?.totalUnpaidAmount || 0) === 0 && (
+                    {!hasOutstanding && (
                       <span className="text-[11px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
                         No Dues
                       </span>
@@ -767,12 +886,21 @@ const AgencyPage = () => {
                   </div>
                 </div>
 
-                {/* All payments cleared banner */}
-                {(branch?.totalUnpaidAmount || 0) === 0 && (
+                {/* Banner */}
+                {!hasOutstanding ? (
                   <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 p-2 rounded-lg mt-1">
                     <span className="text-green-500 text-base">✅</span>
                     <p className="text-xs">
                       All payments are up to date. No outstanding dues.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 p-2 rounded-lg mt-1">
+                    <span className="text-base">⚠️</span>
+                    <p className="text-xs">
+                      Outstanding balance of ₹{totalBalanceDue.toLocaleString()}{" "}
+                      across {pendingStatements} statement
+                      {pendingStatements > 1 ? "s" : ""}.
                     </p>
                   </div>
                 )}
@@ -785,10 +913,16 @@ const AgencyPage = () => {
             {/* Header */}
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-semibold text-lg">Trips Overview</h2>
-              <select className="text-sm border rounded px-2 py-1 text-gray-600">
-                <option>All Time</option>
-                <option>This Month</option>
-                <option>This Year</option>
+              <select
+                className="text-sm border rounded px-2 py-1 text-gray-600"
+                value={tripTimeRange}
+                onChange={(e) => setTripTimeRange(e.target.value)}
+              >
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="year">This Year</option>
               </select>
             </div>
 
@@ -799,11 +933,10 @@ const AgencyPage = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Total Trips</p>
-                <p className="text-2xl font-bold">
-                  {branch.trips?.length || 0}
-                </p>
+                <p className="text-2xl font-bold">{tripSummary.totalTrips}</p>
                 <p className="text-xs text-gray-400">
-                  All trips completed successfully
+                  {tripSummary.completed} completed · {tripSummary.reached}{" "}
+                  reached · {tripSummary.inTransit} in transit
                 </p>
               </div>
             </div>
@@ -816,7 +949,7 @@ const AgencyPage = () => {
                 </div>
                 <p className="text-xs text-gray-500">Completed</p>
                 <p className="font-bold text-green-700 text-lg">
-                  {branch.trips?.length || 0}
+                  {tripSummary.completed}
                 </p>
               </div>
 
@@ -825,7 +958,9 @@ const AgencyPage = () => {
                   <FaClock className="text-orange-400 text-lg" />
                 </div>
                 <p className="text-xs text-gray-500">Pending</p>
-                <p className="font-bold text-orange-500 text-lg">0</p>
+                <p className="font-bold text-orange-500 text-lg">
+                  {tripSummary.pending}
+                </p>
               </div>
 
               <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex flex-col items-center gap-1">
@@ -833,7 +968,9 @@ const AgencyPage = () => {
                   <FaTruck className="text-blue-500 text-lg" />
                 </div>
                 <p className="text-xs text-gray-500">In Transit</p>
-                <p className="font-bold text-blue-600 text-lg">0</p>
+                <p className="font-bold text-blue-600 text-lg">
+                  {tripSummary.inTransit}
+                </p>
               </div>
             </div>
           </div>
@@ -1312,7 +1449,9 @@ const AgencyPage = () => {
                 onChange={handleOnchangeLoadStatementPayload}
               >
                 {months?.slice(1)?.map((m, i) => (
-                  <MenuItem key={i} value={m.toLowerCase()}>
+                  <MenuItem key={i} value={i + 1}>
+                    {" "}
+                    {/* ✅ sends 1, 2, 3... not "april" */}
                     {m}
                   </MenuItem>
                 ))}
@@ -1346,10 +1485,7 @@ const AgencyPage = () => {
               Cancel
             </button>
             <button
-              onClick={() => {
-                generateLoadStatement();
-                setGenerateLoadStatementsModal(false);
-              }}
+              onClick={generateLoadStatement} // ✅ no longer closes modal immediately
               className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
             >
               Generate

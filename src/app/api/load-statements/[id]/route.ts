@@ -1,10 +1,14 @@
 // src/app/api/load-statements/[id]/route.ts
+import mongoose from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "../../../../../lib/mongodb";
 import { LoadStatement } from "../../../../../models/LoadStatement";
 import { Message } from "../../../../../models/Message";
 import { User } from "../../../../../models/User";
 import { verifyToken } from "../../../../../lib/jwt";
+import { Bill } from "../../../../../models/Bill"
+import { Trip } from "../../../../../models/Trip"
+import { Branch } from "../../../../../models/Branch"
 
 export async function GET(
   req: NextRequest,
@@ -12,6 +16,9 @@ export async function GET(
 ) {
   try {
     await connectToDatabase();
+       // ✅ Force schemas to register before populate
+    void Bill;
+    void Trip;
 
     const { id } = await context.params; // 👈 await it here
 
@@ -99,13 +106,13 @@ export async function PATCH(
     statement.balanceDue -= amount;
 
     // Add to payment history
-    statement.paymentHistory.push({
-      amount,
-      date: new Date(),
-      note: note || "",
-      recordedByAdmin: user.id,
-      recordedByAdminName: adminName,
-    });
+   statement.paymentHistory.push({
+  amount,
+  paidOn: new Date(),           // ✅ was: date
+  note: note || "",
+  recordedBy: new mongoose.Types.ObjectId(user.id),  // ✅ was: recordedByAdmin
+  recordedByName: adminName,    // ✅ was: recordedByAdminName
+});
 
     // Auto-close statement if balance is zero
     if (statement.balanceDue <= 0) {
