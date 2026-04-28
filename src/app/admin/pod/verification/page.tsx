@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { Input } from "@mui/material";
+import { usePodImage } from "../../hooks/usePodImage";
 
 type OCRWord = {
   text: string;
@@ -39,6 +40,12 @@ export default function PodVerificationPage() {
   };
 
   const currentPod = pods[0];
+
+  // Always prefer a fresh signed GET URL derived from the s3Key.
+  // This avoids relying on any previously-stored public URLs (which may be wrong in prod)
+  // and avoids requiring S3 CORS for <img crossOrigin="anonymous">.
+  const currentS3Key: string | null = currentPod?.images?.[0]?.s3Key ?? null;
+  const { url: signedImageUrl } = usePodImage(currentS3Key);
 
   useEffect(() => {
     if (!currentPod) return;
@@ -250,9 +257,9 @@ export default function PodVerificationPage() {
     >
       <img
         ref={imgRef}
-        src={currentPod.images[0]?.url}
-        crossOrigin="anonymous"
+        src={signedImageUrl ?? currentPod.images?.[0]?.url}
         className="max-h-[80vh] object-contain block"
+        alt="POD"
       />
 
       {/* 🔥 OCR OVERLAY (ONLY WHEN ZOOM = 1) */}
