@@ -7,6 +7,9 @@ import { Pod } from "models/Pod";
 import { Bill } from "models/Bill";
 import { Trip } from "models/Trip";
 import { requireRole } from "lib/auth";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { s3Client, S3_BUCKET } from "lib/s3";
 
 export async function GET(req: NextRequest) {
   try {
@@ -24,7 +27,30 @@ export async function GET(req: NextRequest) {
       .sort({ createdAt: 1 }) // oldest first — FIFO queue
       .lean();
 
-    return NextResponse.json(pods ?? []); // returns array directly — matches frontend
+    // Always include a signed URL for the first image so the frontend never depends
+    // on any stored public S3 URL (which may be wrong/undefined in production).
+    const out = await Promise.all(
+      (pods ?? []).map(async (p: any) => {
+        const img0 = p?.images?.[0];
+        const key = img0?.s3Key;
+        if (!key) return p;
+        try {
+          const command = new GetObjectCommand({ Bucket: S3_BUCKET, Key: key });
+          const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+          return {
+            ...p,
+            images: [
+              { ...img0, url },
+              ...(Array.isArray(p.images) ? p.images.slice(1) : []),
+            ],
+          };
+        } catch {
+          return p;
+        }
+      }),
+    );
+
+    return NextResponse.json(out); // returns array directly — matches frontend
   } catch (error: any) {
     console.error("POD fetch error:", error);
     return NextResponse.json(

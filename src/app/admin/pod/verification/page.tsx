@@ -45,7 +45,7 @@ export default function PodVerificationPage() {
   // This avoids relying on any previously-stored public URLs (which may be wrong in prod)
   // and avoids requiring S3 CORS for <img crossOrigin="anonymous">.
   const currentS3Key: string | null = currentPod?.images?.[0]?.s3Key ?? null;
-  const { url: signedImageUrl } = usePodImage(currentS3Key);
+  const { url: signedImageUrl, error: signedImageError } = usePodImage(currentS3Key);
 
   useEffect(() => {
     if (!currentPod) return;
@@ -257,10 +257,16 @@ export default function PodVerificationPage() {
     >
       <img
         ref={imgRef}
-        src={signedImageUrl ?? currentPod.images?.[0]?.url}
+        src={signedImageUrl || undefined}
         className="max-h-[80vh] object-contain block"
         alt="POD"
       />
+
+      {signedImageError && (
+        <div className="absolute bottom-2 left-2 right-2 text-xs bg-white/90 border rounded p-2 text-red-700">
+          {signedImageError}
+        </div>
+      )}
 
       {/* 🔥 OCR OVERLAY (ONLY WHEN ZOOM = 1) */}
       {zoom === 1 &&
