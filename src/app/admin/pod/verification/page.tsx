@@ -15,7 +15,7 @@ type OCRWord = {
 };
 
 export default function PodVerificationPage() {
-  const [pods, setPods] = useState<any[]>([]);
+  const [queue, setQueue] = useState<any[]>([]);
   const [lrNumber, setLrNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const [zoom, setZoom] = useState(1);
@@ -36,19 +36,16 @@ export default function PodVerificationPage() {
     const res = await fetch("/api/pod/verify");
     const text = await res.text();
     const data = text ? JSON.parse(text) : [];
-    setPods(data);
+    setQueue(data);
   };
 
-  const currentPod = pods[0];
+  const currentItem = queue[0];
 
-  // Always prefer a fresh signed GET URL derived from the s3Key.
-  // This avoids relying on any previously-stored public URLs (which may be wrong in prod)
-  // and avoids requiring S3 CORS for <img crossOrigin="anonymous">.
-  const currentS3Key: string | null = currentPod?.images?.[0]?.s3Key ?? null;
+  const currentS3Key: string | null = currentItem?.s3Key ?? null;
   const { url: signedImageUrl, error: signedImageError } = usePodImage(currentS3Key);
 
   useEffect(() => {
-    if (!currentPod) return;
+    if (!currentItem) return;
 
     // wait a bit for image to render
     const timer = setTimeout(() => {
@@ -56,11 +53,11 @@ export default function PodVerificationPage() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [currentPod]);
+  }, [currentItem]);
 
   /* 🔥 OCR FUNCTION */
   const detectText = async () => {
-    if (!currentPod) return;
+    if (!currentItem) return;
 
     setOcrLoading(true);
 
@@ -71,7 +68,7 @@ export default function PodVerificationPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          s3Key: currentPod.images[0].s3Key,
+          s3Key: currentItem.s3Key,
         }),
       });
 
@@ -101,7 +98,7 @@ export default function PodVerificationPage() {
   };
 
   const handleVerify = async () => {
-    if (!currentPod || !lrNumber) return;
+    if (!currentItem || !lrNumber) return;
 
     setLoading(true);
 
@@ -109,20 +106,21 @@ export default function PodVerificationPage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        podId: currentPod._id,
+        podId: currentItem.podId,
+        imageId: currentItem.imageId,
         action: "VERIFY",
-        linkedLRs: [{ lrNumber, imageIndex: 0 }],
+        lrNumber,
       }),
     });
 
-    setPods((prev) => prev.slice(1));
+    setQueue((prev) => prev.slice(1));
     setLrNumber("");
     setWords([]);
     setLoading(false);
   };
 
   const handleReject = async () => {
-    if (!currentPod) return;
+    if (!currentItem) return;
 
     setLoading(true);
     
@@ -130,14 +128,15 @@ export default function PodVerificationPage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        podId: currentPod._id,
+        podId: currentItem.podId,
+        imageId: currentItem.imageId,
         action: "REJECT",
         rejectionReason: rejectionReason, 
         
       }),
     });
 
-    setPods((prev) => prev.slice(1));
+    setQueue((prev) => prev.slice(1));
     setWords([]);
     setLoading(false);
     setRejectionReason("");
@@ -148,11 +147,11 @@ export default function PodVerificationPage() {
       {/* HEADER */}
       <div className="flex justify-between mb-4">
         <h1 className="text-xl font-bold">POD Verification</h1>
-        <p className="font-semibold">Queue: {pods.length}</p>
+        <p className="font-semibold">Queue: {queue.length}</p>
       </div>
 
-      {!currentPod ? (
-        <p className="text-center mt-10 text-gray-500">No pending PODs 🎉</p>
+      {!currentItem ? (
+        <p className="text-center mt-10 text-gray-500">No pending images 🎉</p>
       ) : (
         <div className="flex gap-4">
           {/* LEFT PANEL */}
@@ -207,10 +206,10 @@ export default function PodVerificationPage() {
            
             <div className="text-xs text-gray-500 mt-auto">
               <p className=" text-sm text-gray-600">
-              Uploaded by: {currentPod.uploadedBy?.name}
+              Uploaded by: {currentItem.uploadedBy?.name}
             </p>
               at:{" "}
-              {new Date(currentPod.createdAt).toLocaleString()}
+              {new Date(currentItem.createdAt).toLocaleString()}
             </div>  
 
 

@@ -7,18 +7,20 @@ export interface IPod extends Document {
   branch: mongoose.Types.ObjectId;
   images: {
     s3Key: string;
-    url: string;
+    // Stored public URL is optional and should not be trusted for rendering in production.
+    // Prefer using the server to generate signed GET URLs from s3Key.
+    url?: string;
     uploadedAt: Date;
+    status: "PENDING" | "VERIFIED" | "REJECTED";
+    rejectionReason?: string;
+    verifiedBy?: mongoose.Types.ObjectId;
+    verifiedAt?: Date;
+    // One image corresponds to one LR in your workflow.
+    lrNumber?: string;
+    billId?: mongoose.Types.ObjectId;
   }[];
+  // Roll-up status for the whole pod (derived from images[].status).
   status: "PENDING" | "VERIFIED" | "REJECTED";
-  rejectionReason?: string;
-  verifiedBy?: mongoose.Types.ObjectId;
-  verifiedAt?: Date;
-  linkedLRs: {
-    lrNumber: string;
-    billId: mongoose.Types.ObjectId;
-    imageIndex: number; // which image in the array belongs to this LR
-  }[];
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -32,8 +34,18 @@ const PodSchema = new Schema<IPod>(
     images: [
       {
         s3Key: { type: String, required: true },
-        url: { type: String, required: true },
+        url: { type: String },
         uploadedAt: { type: Date, default: Date.now },
+        status: {
+          type: String,
+          enum: ["PENDING", "VERIFIED", "REJECTED"],
+          default: "PENDING",
+        },
+        rejectionReason: { type: String },
+        verifiedBy: { type: Schema.Types.ObjectId, ref: "User" },
+        verifiedAt: { type: Date },
+        lrNumber: { type: String },
+        billId: { type: Schema.Types.ObjectId, ref: "Bill" },
       },
     ],
     status: {
@@ -41,16 +53,6 @@ const PodSchema = new Schema<IPod>(
       enum: ["PENDING", "VERIFIED", "REJECTED"],
       default: "PENDING",
     },
-    rejectionReason: { type: String },
-    verifiedBy: { type: Schema.Types.ObjectId, ref: "User" },
-    verifiedAt: { type: Date },
-    linkedLRs: [
-      {
-        lrNumber: { type: String },
-        billId: { type: Schema.Types.ObjectId, ref: "Bill" },
-        imageIndex: { type: Number },
-      },
-    ],
     notes: { type: String },
   },
   { timestamps: true }
@@ -58,6 +60,7 @@ const PodSchema = new Schema<IPod>(
 
 // ✅ Index for faster queue queries
 PodSchema.index({ status: 1, createdAt: 1 });
+PodSchema.index({ "images.status": 1, "images.uploadedAt": 1 });
 
 export const Pod =
   mongoose.models.Pod || mongoose.model<IPod>("Pod", PodSchema);

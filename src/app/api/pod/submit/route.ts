@@ -18,19 +18,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "images required" }, { status: 400 });
   }
 
-  if (!images.every((img: any) => img.s3Key && img.url)) {
-  return NextResponse.json(
-    { error: "Invalid images data" },
-    { status: 400 }
-  );
-}
+  // url is optional (legacy). s3Key is the source of truth.
+  if (!images.every((img: any) => img?.s3Key)) {
+    return NextResponse.json({ error: "Invalid images data" }, { status: 400 });
+  }
 
-  // Each image = { s3Key, url }
+  // Each image = { s3Key, url? }
   const pod = await Pod.create({
     
     uploadedBy: user.id,
     branch: user.branchId,
-    images,
+    images: images.map((img: any) => ({
+      s3Key: img.s3Key,
+      url: img.url,
+      status: "PENDING",
+      uploadedAt: new Date(),
+    })),
     notes,
     status: "PENDING",
   });
