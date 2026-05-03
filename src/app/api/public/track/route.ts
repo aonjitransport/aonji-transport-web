@@ -1,9 +1,14 @@
+//app/api/public/track/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "lib/mongodb";
 import { Bill } from "models/Bill";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { s3Client, S3_BUCKET } from "lib/s3";
+import { Branch } from "models/Branch";
+
+// ✅ Force Mongoose to register the Branch schema before any populate calls
+void Branch;
 
 export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {

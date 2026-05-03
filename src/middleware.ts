@@ -8,7 +8,7 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET!);
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  const publicRoutes = ["/", "/about", "/contact","/services"];
+  const publicRoutes = ["/", "/about", "/contact","/services","/shipment-tracking"];
 
   const agentBlockedPaths = [
   "/admin/agencies",
@@ -23,7 +23,8 @@ export async function middleware(req: NextRequest) {
   pathname.match(/\.(css|js|png|jpg|svg|ico)$/) ||
   pathname.startsWith("/admin/login") ||
   pathname.startsWith("/api/init") ||
-  pathname.startsWith("/api/auth")
+  pathname.startsWith("/api/auth")||
+  pathname.startsWith("/api/public/")
 ) {
   return NextResponse.next();
 }

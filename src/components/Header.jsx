@@ -15,7 +15,9 @@ const Header = () => {
     <>
     
     <div className="w-full p-1 bg-blue-950 flex justify-between sticky top-0 z-50   " >
-      <Image src={logo} className="w-28 mt-1 " alt="logo"  />
+      <Link href="/" className="flex items-center" >
+      <Image src={logo} className="w-28 mt-1 "  alt="logo"  />
+      </Link>
 
       <div className=" flex items-center mr-1" >
         <ul className="font-roboto  flex gap-3 justify-end text-sm md:text-lg lg:text-xl lg:gap-8 lg:mr-4  text-gray-300  ">

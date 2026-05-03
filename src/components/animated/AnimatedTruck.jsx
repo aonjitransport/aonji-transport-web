@@ -1,63 +1,79 @@
 "use client"
 import Image from "next/image"
-import ellipse from '../../../public/assets/Ellipse.svg'
-import truck from '../../../public/assets/trucksvg.svg'
 import { motion } from 'framer-motion';
-import { useEffect,useState } from "react";
-
+import { useEffect, useState } from "react";
+import truckBgVec from '../../../public/assets/hstruckbg1.svg'
+import truckVec from '../../../public/assets/hstruckvec1.svg'
+import parcelVec from '../../../public/assets/parcelspngvec.png'
 
 const AnimatedTruck = () => {
+  const [scrollY, setScrollY] = useState(0);
 
-    const [scrollY,setScrollY] = useState(0);
+  useEffect(() => {
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
-    const handleScroll = () => {
-        setScrollY(window.scrollY);
-      };
+  const ellipseMovement = scrollY * 0.09;
+  const parcelMovement = scrollY * 0.05;
+  const truckMovement = scrollY * 1.4;
+  const truckZoom = 1 + scrollY * 0.00001;
 
-      useEffect(() => {
-        // Add event listener for scroll
-        window.addEventListener('scroll', handleScroll);
-    
-        // Clean up event listener on component unmount
-        return () => window.removeEventListener('scroll', handleScroll);
-      }, []);
-    
-      // Set the movement based on the scroll position
-      const ellipseMovement = scrollY * 0.2; // Controls how fast ellipse moves
-      const truckMovement = scrollY * 1;  // Controls how fast truck moves
-      const truckZoom = 1 + scrollY * 0.001;
   return (
-    <>
-    <div className='relative w-[340px] h-[300px] mx-4 md:w-[440px] md:h-[400px] ' >
-        
+    <div className="relative w-full h-full min-h-[420px]">
 
-            <motion.div
-            
-            className="absolute"
-            style={{willChange:'transform'}}
-            animate={{x:ellipseMovement}}
-            transition={{type:'spring',stiffness:20}}           
+      {/* Background circle — fills the container */}
+      <motion.div
+        className="absolute inset-0"
+        style={{ willChange: 'transform' }}
+        animate={{ x: ellipseMovement }}
+        transition={{ type: 'spring', stiffness: 20 }}
+      >
+        <Image
+          src={truckBgVec}
+          alt="background"
+          fill
+          className="object-contain object-center"
+        />
+      </motion.div>
 
-            >
-            <Image src={ellipse} alt="img" className=" w-[300px] lg:w-[510px] " />
-            </motion.div>
-
-
-        <motion.div
-        
-         className="absolute z-10" // Ensure truck is on top using z-index
-          style={{ willChange: 'transform' }}
-          animate={{ x: -truckMovement,scale:truckZoom,transition:'linear'}}
-          transition={{ type: 'spring', stiffness: 20 }}
-        >
-        <Image src={truck} className="w-52 translate-x-32 translate-y-12  lg:translate-x-28 lg:translate-y-10 lg:w-96 " alt="img" />
-        </motion.div>
-       
+      {/* Truck — slightly larger than bg, centered */}
+      <motion.div
+        className="absolute inset-0 z-10 flex items-center justify-center"
+        style={{ willChange: 'transform' }}
+        animate={{ x: -truckMovement, scale: truckZoom }}
+        transition={{ type: 'spring', stiffness: 20 }}
+      >
+        <div className="relative  w-[90%] h-[90%]">
+          <Image
+            src={truckVec}
+            alt="Aonji Transport Truck"
+            fill
+            className="object-contain translate-y-20 object-center"
+          />
         </div>
-    
-    
-    </>
-  )
-}
+      </motion.div>
 
-export default AnimatedTruck
+       {/* Background circle — fills the container */}
+      <motion.div
+         className="absolute inset-0 z-20 flex items-center justify-center"
+        style={{ willChange: 'transform' }}
+        animate={{ x: parcelMovement }}
+        transition={{ type: 'spring', stiffness: 20 }}
+      >
+        <Image
+          src={parcelVec}
+          alt="background"
+          fill
+          className="object-contain translate-y-36 translate-x-44 scale-[.4] object-center"
+        />
+      </motion.div>
+
+      
+
+    </div>
+  );
+};
+
+export default AnimatedTruck;
