@@ -166,21 +166,6 @@ const Page = () => {
     },
 
     {
-      headerName: "download PDF",
-      field: "_id",
-      width: 140,
-      cellRenderer: (params) => {
-        return (
-          <button
-            className="px-3 py-1 bg-blue-600 text-white rounded"
-            onClick={() => downloadTripPDF(params.data)}
-          >
-            Download
-          </button>
-        );
-      },
-    },
-    {
       headerName: "View",
       field: "_id",
       cellRenderer: (params) => {
@@ -196,6 +181,22 @@ const Page = () => {
         );
       },
     },
+    {
+      headerName: "View Trip Sheet",
+      field: "_id",
+      cellRenderer: (params) => {
+        return (
+          <button
+            className="px-3 py-1 bg-purple-600 text-white rounded"
+            onClick={() => {
+              window.location.href = `/admin/tripsheets/${params.data._id}/pdf-preview`;
+            }}
+          >
+            View Trip Sheet
+          </button>
+        );
+      },
+    }
   ];
 
   const CustomNoRowsOverlay = () => {

@@ -461,7 +461,7 @@ const normalize = (s) => (typeof s === "string" ? s.trim().toLowerCase() : "");
 
 
 
-
+// all the calculations related to bills, charges, commission, net payable amount etc are done in this useEffect which runs when deliveryBillsList or agencyCommissionCharges.chargeRate changes. deliveryBillsList is the list of bills that are selected to be added in the trip and are about to deliver. so whenever user adds or removes a bill from the deliveryBillsList this useEffect runs and calculates all the amounts according to the current deliveryBillsList and the current commission charge rate.
 useEffect(() => {
   if (!deliveryBillsList) return;
 
@@ -488,7 +488,7 @@ useEffect(() => {
   );
 
   // 5️⃣ Agency Commission (only on unpaid bills)
-  const commissionChargeAmount = (totalUnpaidAmount * agencyCommissionCharges.chargeRate) / 100;
+  const commissionChargeAmount = (totalAmount * agencyCommissionCharges.chargeRate) / 100;
 
   // 6️⃣ Net Payable Amount (remaining amount agency needs to pay)
   const netPayableAmount = totalUnpaidAmount - commissionChargeAmount;
@@ -976,6 +976,36 @@ const handleCreateTrip = async () => {
  
 
 
+  
+  // ── LR Number Search ──────────────────────────────────────────────────────
+  const [lrSearchInput, setLrSearchInput]     = useState("");
+  const [lrSearchResult, setLrSearchResult]   = useState(null);
+  const [lrSearchLoading, setLrSearchLoading] = useState(false);
+  const [lrSearchError, setLrSearchError]     = useState("");
+
+  const handleLrSearch = async () => {
+    const lr = lrSearchInput.trim();
+    if (!lr) return;
+    setLrSearchLoading(true);
+    setLrSearchError("");
+    setLrSearchResult(null);
+    try {
+      const res = await fetch(`/api/bills/get-lr-bynumber?lrNumber=${encodeURIComponent(lr)}`);
+      if (!res.ok) {
+        const err = await res.json();
+        setLrSearchError(err.error || "Bill not found");
+      } else {
+        const data = await res.json();
+        setLrSearchResult(data);
+      }
+    } catch {
+      setLrSearchError("Something went wrong");
+    } finally {
+      setLrSearchLoading(false);
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────
+
 //  loading || years.length === 0
 
   if (loading || years.length === 0) {
@@ -996,16 +1026,6 @@ const handleCreateTrip = async () => {
        // You can replace this with a spinner or fallback UI
   }
 
-  // const downloadPdf = async () => {
-  //   const fileName = 'test.pdf';
-  //   const blob = await pdf(<PDFBillListDocument />).toBlob();
-  //   saveAs(blob, fileName);
-  // };
-
-
- 
-
-  
 const handleTabsChange = (event, newValue) => {
   setTabsValue(newValue);
 
@@ -1205,11 +1225,72 @@ const handleTabsChange = (event, newValue) => {
               </Tabs>
             </div>
           </div>
+           {/* ── LR Number Search Bar ─────────────────────────────────────── */}
+      <div className="flex justify-end items-center gap-2 px-3 py-2">
+        <div className="relative flex items-center">
+          <input
+            type="text"
+            value={lrSearchInput}
+            onChange={(e) => {
+              setLrSearchInput(e.target.value);
+              // clear result when user clears the input
+              if (!e.target.value) { setLrSearchResult(null); setLrSearchError(""); }
+            }}
+            onKeyDown={(e) => { if (e.key === "Enter") handleLrSearch(); }}
+            placeholder="Search by LR Number..."
+            className="border border-gray-300 rounded-l-md px-3 py-2 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            onClick={handleLrSearch}
+            disabled={lrSearchLoading}
+            className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-r-md disabled:opacity-50"
+          >
+            {lrSearchLoading ? "..." : "Search"}
+          </button>
+        </div>
+      </div>
         </form>
       </div>
 
+     
+
+      {/* ── LR Search Result ─────────────────────────────────────────── */}
+      {lrSearchError && (
+        <div className="mx-3 mb-2 px-4 py-2 bg-red-50 border border-red-200 text-red-600 text-sm rounded-md">
+          {lrSearchError}
+        </div>
+      )}
+      {lrSearchResult && (
+        <div className="mx-3 mb-3 border border-blue-200 rounded-md bg-blue-50 p-3 text-sm">
+          {/* Header row */}
+          <div className="flex justify-between items-center mb-3 pb-2 border-b border-blue-200">
+            <span className="font-bold text-blue-800 text-base">{lrSearchResult.lrNumber}</span>
+            <Link href={`/admin/bills/${lrSearchResult._id}`}>
+              <span className="text-blue-600 underline text-xs cursor-pointer">View Full Bill →</span>
+            </Link>
+          </div>
+          {/* Info grid — two columns of label:value pairs */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-gray-700">
+            {[
+              { label: "Consigner",  value: lrSearchResult.consigner?.name ?? "—" },
+              { label: "Consignees", value: lrSearchResult.consignees?.map(c => c.name).join(", ") || "—" },
+              { label: "Parcels",    value: lrSearchResult.totalNumOfParcels ?? "—" },
+              { label: "Amount",     value: `₹${lrSearchResult.totalAmount ?? "—"}` },
+              { label: "From",       value: lrSearchResult.fromBranch?.name ?? "—" },
+              { label: "To",         value: lrSearchResult.toBranch?.name ?? lrSearchResult.to ?? "—" },
+              { label: "Payment",    value: lrSearchResult.paymentStatus ? "Paid" : "To Pay" },
+              { label: "Status",     value: lrSearchResult.status ?? "—" },
+            ].map(({ label, value }) => (
+              <div key={label} className="flex flex-col">
+                <span className="text-xs text-gray-500 font-semibold uppercase tracking-wide">{label}</span>
+                <span className="text-gray-800 font-medium mt-0.5">{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div
-        className="ag-theme-alpine"
         style={{
           height: 600,
           width: "100%",
@@ -1477,16 +1558,8 @@ const handleTabsChange = (event, newValue) => {
             <div className=" text-black p-1 border-2 bg-slate-50 w-full  ">
               {/* header section */}
 
-              <div className=" p-2  flex justify-between  ">
-                <div className="text-xs font-sans font-semibold ">
-                  <div>
-                    <p className="leading-none"> Contact : 9989989898 </p>
-                    <p className="leading-none">
-                      {" "}
-                      email : aonjiTransport@mail.com
-                    </p>
-                  </div>
-                </div>
+              <div className=" p-2  flex justify-center items-center  ">
+                
 
                 <div className=" flex flex-col items-center ">
                   <div>
@@ -1502,12 +1575,10 @@ const handleTabsChange = (event, newValue) => {
                     {" "}
                     Beside New RTC Bustand proddatur,516360.{" "}
                   </div>
-                  <div className="">(letter pad)</div>
+                  <div className="">(Trip Sheet)</div>
                 </div>
 
-                <div>
-                  <Image src={logo} alt="logo" width={120} />
-                </div>
+               
               </div>
               <div className="bg-black w-full h-[2px] "></div>
               <div className="flex justify-between mb-2  ">

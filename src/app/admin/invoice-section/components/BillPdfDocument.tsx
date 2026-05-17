@@ -13,18 +13,10 @@ import { LuHeartHandshake } from "react-icons/lu";
 
 import { Image } from "@react-pdf/renderer";
 
-interface toBranch {
-  name: string;
-  phone: string;
-  address: string;  
-  city: string;
-}
-
-interface fromBranch {
+interface Branch {
   name: string;
   phone: string;
   address: string;
-  city: string;
 }
 
 interface Consigner {
@@ -52,8 +44,8 @@ interface Bill {
   lrNumber: number;
   date: string;
   to: string;
-  toBranch: toBranch;
-  fromBranch: fromBranch;
+  toBranch: Branch;
+  fromBranch:Branch;
   totalNumOfParcels: number;
   totalAmount: number;
   paymentStatus: boolean;
@@ -61,7 +53,7 @@ interface Bill {
   consigner: Consigner;
   consignees: Consignee[];
   createdBy: CreatedBy;
-  
+  doorDelivery: boolean;
 }
 
 interface PDFDocumentProps {
@@ -188,120 +180,69 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                   }}
                 >
                   <Text
-                    style={[
+                    style={
                       {
                         fontSize: 10,
                         letterSpacing: 2,
                         color: "white",
                         textAlign: "center",
                         fontFamily: "Helvetica-Bold",
-                      },
-                    ]}
+                      }
+                    }
                   >
                     Lorry Receipt (LR)
                   </Text>
                 </View>
-                <View style={styles.header}>
-                  {/* Group 1 */}
-                  <Image
-                    style={{ width: "6%", height: "auto" }}
-                    src="/hanumanlogo.png"
-                  />
+                <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: 4, paddingHorizontal: 6, gap: 8 }}>
 
-                  {/* Group 2 */}
-
-                  {/* Group 3 */}
-                  <View
-                    style={[{ fontFamily: "Helvetica-Bold", color: "#333" }]}
-                  >
-                    <Text style={{ fontSize: 8 }}>
-                      Aonji Express Logistics Services
-                    </Text>
-                    <Text style={{ fontSize: 6 }}>
-                      GSTIN:37ASAPG8594P1ZX, Reg.:12/08/2009
-                    </Text>
-                    <Text style={{ fontSize: 6 }}>
-                      beside new RTC Bus Stand,
-                    </Text>
-                    <Text style={{ fontSize: 6 }}>
-                      Proddatur, Kadapa Dist., 516360.
-                    </Text>
-                    <Text style={{ fontSize: 6 }}>8106226616, 6303293542.</Text>
-                  </View>
-                  {/* Group 4 */}
-                  <View>
-                   
-                    <Text style={styles.headerDetails}>Anantapuram</Text>
-                    <Text style={styles.headerDetails}>Dharmavaram</Text>
-                    <Text style={styles.headerDetails}>Hindupuram</Text>
-                    <Text style={styles.headerDetails}>Rayalcheruvu</Text>
-                      <Text style={styles.headerDetails}>Peddavaduguru</Text>
-                    
-                      <Text style={styles.headerDetails}>Kalyandurgam</Text>
-                   
-                    
-                    
-                  </View>
-                  {/* Group 5 */}
-
-                  <View>
-                    <Text style={styles.headerDetails}>Tadipatri</Text>
-                    <Text style={styles.headerDetails}>Gooty</Text>
-                    <Text style={styles.headerDetails}>Yadiki</Text>
-                     <Text style={styles.headerDetails}>Kadiri</Text>
-                    <Text style={styles.headerDetails}>Pamidi</Text>
-                    <Text style={styles.headerDetails}>Guntakal</Text>
-                    
-                  
-                  
-                  </View>
-
-                  <View>
-                    <Text style={styles.headerDetails}>Kadapa</Text>
-                    <Text style={styles.headerDetails}>Mydukuru</Text>
-                    <Text style={styles.headerDetails}>Khajipet</Text>
-                    <Text style={styles.headerDetails}>Chennur</Text>
-                    <Text style={styles.headerDetails}>Kamalapuram</Text>
-                    <Text style={styles.headerDetails}>Jammulamadugu</Text>
-                    
-                  </View>
-
-                  <View>
-                    <Text style={styles.headerDetails}>Yerraguntla</Text>
-                    <Text style={styles.headerDetails}>Auku</Text>
-                     <Text style={styles.headerDetails}>Adoni</Text>
-                    <Text style={styles.headerDetails}>Sirivella</Text>
-                    <Text style={styles.headerDetails}>Emiganore</Text>
-                    <Text style={styles.headerDetails}>Kodumuru</Text>
-                   
-                  </View>
-
-                  
-                  <View>
-                    <Text style={styles.headerDetails}>Kurnool</Text>
-                    <Text style={styles.headerDetails}>Nandyala</Text>
-                    <Text style={styles.headerDetails}>Allagadda</Text>
-                    <Text style={styles.headerDetails}>Veligodu</Text>
-                    <Text style={styles.headerDetails}>Kovelkuntla</Text>
-                    <Text style={styles.headerDetails}>Bhethemcherla</Text>
-                    
-                  </View>
-
-                  <View>
+                  {/* Hanuman Logo — constrained by height only so aspect ratio is preserved */}
+                  <View style={{ width: 40, height: 44, alignItems: "center", justifyContent: "center" }}>
                     <Image
-                      src="/aonji-final-bw-logo.png"
-                      style={{ width: 100 }}
+                      style={{ width: 40, height: 44, objectFit: "contain" }}
+                      src="/hanumanlogo.png"
                     />
                   </View>
+
+                  {/* Company Info */}
+                  <View style={{ color: "#111", marginRight: 6 }}>
+                    <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold" }}>Aonji Express Logistics Services</Text>
+                    <Text style={{ fontSize: 5.5, fontFamily: "Helvetica", marginTop: 1 }}>GSTIN:37ASAPG8594P1ZX, Reg.:12/08/2009</Text>
+                    <Text style={{ fontSize: 5.5, fontFamily: "Helvetica" }}>beside new RTC Bus Stand,</Text>
+                    <Text style={{ fontSize: 5.5, fontFamily: "Helvetica" }}>Proddatur, Kadapa Dist., 516360.</Text>
+                    <Text style={{ fontSize: 5.5, fontFamily: "Helvetica" }}>8106226616, 6303293542.</Text>
+                  </View>
+
+                  {/* City columns — no dividers */}
+                  {[
+                    ["Anantapuram", "Dharmavaram", "Hindupuram", "Rayalcheruvu", "Peddavaduguru", "Kalyandurgam"],
+                    ["Tadipatri", "Gooty", "Yadiki", "Kadiri", "Pamidi", "Guntakal"],
+                    ["Kadapa", "Mydukuru", "Khajipet", "Chennur", "Kamalapuram", "Jammulamadugu"],
+                    ["Yerraguntla", "Auku", "Adoni", "Sirivella", "Emiganore", "Kodumuru"],
+                    ["Kurnool", "Nandyala", "Allagadda", "Veligodu", "Kovelkuntla", "Bhethemcherla"],
+                  ].map((col, ci) => (
+                    <View key={ci} style={{ flex: 1 }}>
+                      {col.map((city, ri) => (
+                        <Text key={ri} style={{ fontSize: 5.5, fontFamily: "Helvetica", color: "#222", lineHeight: 1.5 }}>
+                          {city}
+                        </Text>
+                      ))}
+                    </View>
+                  ))}
+
+                  {/* AONJI truck logo */}
+                  <Image
+                    src="/aonji-final-bw-logo.png"
+                    style={{ width: 70, height: 44, objectFit: "contain" }}
+                  />
                 </View>
               </View>
 
               {/* Bill Info */}
               <View
-                style={[
-                  styles.dateSection,
-                  { fontFamily: "Courier-Bold", color: "#333" },
-                ]}
+                style={
+                  
+                  { ...styles.dateSection, fontFamily: "Courier-Bold", color: "#333" }
+                }
               >
                 <Text style={styles.details}>#{bill.lrNumber}</Text>
                 <Text style={styles.details}>DATE: {date}</Text>
@@ -309,53 +250,108 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
 
               {/* Shipping Details */}
               <View
-                style={[
-                  styles.shippingDetailsSection,
-                  { paddingHorizontal: 10 },
-                ]}
+                style={{
+                  flexDirection: "row",
+                  border: "1 solid #ddd",
+                  borderRadius: 4,
+                  marginTop: 3,
+                  fontSize: 8,
+                }}
               >
-                <View style={{ fontFamily: "Helvetica-Bold", color: "#333" }}>
-                  <Text style={{}}>Agency: {bill.fromBranch.name}</Text>
-                  
-                  <Text style={{}}>From: {bill.fromBranch.city}</Text>
-                  <Text style={{}}>Phone: {bill.fromBranch.phone}</Text>
-                  <Text style={{}}>Total Lot: {bill.totalNumOfParcels} </Text>
-                </View>
-
-                <View style={{ fontFamily: "Helvetica-Bold", color: "#333" }}>
-                  <Text style={{}}>To: {bill.to}</Text>
-                  <Text style={{}}>Agency: {bill.toBranch.name}</Text>
-                  <Text style={{}}>Address: {bill.toBranch.address}</Text>
-                  <Text style={{}}>Phone: {bill.toBranch.phone}</Text>
-                </View>
-
-                <View style={{ fontFamily: "Helvetica-Bold", color: "#333" }}>
-                  <Text style={{}}>Consigner: {bill.consigner.name}</Text>
-                  <Text style={{}}>Phone: {bill.consigner.phone}</Text>
-                  <Text style={{}}>Address: {bill.consigner.address}</Text>
-                  <Text style={{ fontWeight: "bold", fontSize: 12 }}>
-                    Total Amount: Rs. {bill.totalAmount}/-{" "}
-                    {bill.paymentStatus ? "Paid" : "To Pay"}
+                {/* Column 1: From */}
+                <View style={{ flex: 1, padding: 6, borderRight: "1 solid #e5e7eb" }}>
+                  {/* Column header */}
+                  <Text style={{ fontSize: 6, fontFamily: "Helvetica-Bold", color: "#6b7280", marginBottom: 4, letterSpacing: 0.5 }}>
+                    ORIGIN
                   </Text>
+                  {/* Label + Value rows */}
+                  <View style={{ flexDirection: "row", marginBottom: 3 }}>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#374151", width: 32 }}>From</Text>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica", color: "#111827", flex: 1 }}>: {bill.fromBranch.name}</Text>
+                  </View>
+                  <View style={{ flexDirection: "row", marginBottom: 3 }}>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#374151", width: 32 }}>Phone</Text>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica", color: "#111827", flex: 1 }}>: {bill.fromBranch.phone}</Text>
+                  </View>
+                  <View style={{ flexDirection: "row" }}>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#374151", width: 32 }}>Lots</Text>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica", color: "#111827", flex: 1 }}>: {bill.totalNumOfParcels}</Text>
+                  </View>
+                  <View style={{ flexDirection: "row" }}>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#374151", width: 32 }}>Issued by</Text>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica", color: "#111827", flex: 1 }}>: {bill.createdBy.name}</Text>
+                  </View>
+
+                </View>
+
+                {/* Column 2: To */}
+                <View style={{ flex: 1, padding: 6, borderRight: "1 solid #e5e7eb" }}>
+                  <Text style={{ fontSize: 6, fontFamily: "Helvetica-Bold", color: "#6b7280", marginBottom: 4, letterSpacing: 0.5 }}>
+                    DESTINATION
+                  </Text>
+                  <View style={{ flexDirection: "row", marginBottom: 3 }}>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#374151", width: 40 }}>To</Text>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica", color: "#111827", flex: 1 }}>: {bill.to}</Text>
+                  </View>
+                  <View style={{ flexDirection: "row", marginBottom: 3 }}>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#374151", width: 40 }}>Agency</Text>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica", color: "#111827", flex: 1 }}>: {bill.toBranch.name}</Text>
+                  </View>
+                  <View style={{ flexDirection: "row", marginBottom: 3 }}>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#374151", width: 40 }}>Address</Text>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica", color: "#111827", flex: 1 }}>: {bill.toBranch.address}</Text>
+                  </View>
+                  <View style={{ flexDirection: "row" }}>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#374151", width: 40 }}>Phone</Text>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica", color: "#111827", flex: 1 }}>: {bill.toBranch.phone}</Text>
+                  </View>
+                </View>
+
+                {/* Column 3: Consigner */}
+                <View style={{ flex: 1, padding: 6 }}>
+                  <Text style={{ fontSize: 6, fontFamily: "Helvetica-Bold", color: "#6b7280", marginBottom: 4, letterSpacing: 0.5 }}>
+                    CONSIGNER
+                  </Text>
+                  <View style={{ flexDirection: "row", marginBottom: 3 }}>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#374151", width: 40 }}>Name</Text>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica", color: "#111827", flex: 1 }}>: {bill.consigner.name}</Text>
+                  </View>
+                  <View style={{ flexDirection: "row", marginBottom: 3 }}>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#374151", width: 40 }}>Phone</Text>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica", color: "#111827", flex: 1 }}>: {bill.consigner.phone}</Text>
+                  </View>
+                  <View style={{ flexDirection: "row", marginBottom: 5 }}>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#374151", width: 40 }}>Address</Text>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica", color: "#111827", flex: 1 }}>: {bill.consigner.address}</Text>
+                  </View>
+                  {/* Total Amount highlight */}
+                <View style={{ backgroundColor: "#1e293b", borderRadius: 3, padding: 4, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+  <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#ffffff" }}>
+    Rs. {bill.totalAmount}/- {bill.paymentStatus ? "Paid" : "To Pay"}
+  </Text>
+  <Text style={{ fontSize: 6, fontFamily: "Helvetica", color: "#d1d5db",marginRight: 2 }}>
+    {bill.doorDelivery ? "Door Delivery" : "Branch Pickup"}
+  </Text>
+</View>
                 </View>
               </View>
 
               {/* Table */}
               <View style={styles.table}>
                 <View style={styles.tableRow}>
-                  <Text style={[styles.tableCellHeader, { flex: 0.2 }]}>
+                  <Text style={ { ...styles.tableCellHeader, flex: 0.2 }}>
                     NO.
                   </Text>
-                  <Text style={[styles.tableCellHeader]}>Consignee</Text>
+                  <Text style={styles.tableCellHeader}>Consignee</Text>
                   <Text style={styles.tableCellHeader}>Phone</Text>
-                  <Text style={[styles.tableCellHeader, { flex: 0.3 }]}>
+                  <Text style={ { ...styles.tableCellHeader, flex: 0.3 }}>
                     Qty
                   </Text>
                   <Text style={styles.tableCellHeader}>Type</Text>
-                  <Text style={[styles.tableCellHeader, { flex: 0.4 }]}>
+                  <Text style={ { ...styles.tableCellHeader, flex: 0.4 }}>
                     Amount
                   </Text>
-                  <Text style={[styles.tableCellHeader, { flex: 1.6 }]}>
+                  <Text style={ { ...styles.tableCellHeader, flex: 1.6 }}>
                     Address
                   </Text>
                 </View>
@@ -363,28 +359,32 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                 {bill.consignees.map((item, index) => (
                   <View
                     key={index}
-                    style={[
-                      styles.tableRow,
-                      {
+                    style={
+                      
+                      { ...styles.tableRow,
                         fontFamily: "Courier-Bold",
                         color: "black",
                         fontWeight: "bold",
-                      },
-                    ]}
+                      }
+                    }
                   >
-                    <Text style={[styles.tableCell, { flex: 0.2 }]}>
+                    <Text style={ { ...styles.tableCell, flex: 0.2 }}>
                       {index + 1}
                     </Text>
-                    <Text style={[styles.tableCell]}>{item.name}</Text>
-                    <Text style={styles.tableCell}>{item.phone}</Text>
-                    <Text style={[styles.tableCell, { flex: 0.3 }]}>
+                    <Text style={ { ...styles.tableCell }}>
+                      {item.name}
+                    </Text>
+                    <Text style={ { ...styles.tableCell } }>
+                      {item.phone}
+                    </Text>
+                    <Text style={ { ...styles.tableCell, flex: 0.3 } }>
                       {item.numOfParcels}
                     </Text>
                     <Text style={styles.tableCell}>{item.type}</Text>
-                    <Text style={[styles.tableCell, { flex: 0.4 }]}>
+                    <Text style={ { ...styles.tableCell, flex: 0.4 } }>
                       Rs.{item.amount}
                     </Text>
-                    <Text style={[styles.tableCell, { flex: 1.6 }]}>
+                    <Text style={ { ...styles.tableCell, flex: 1.6 } }>
                       {item.address}
                     </Text>
                   </View>
@@ -403,79 +403,128 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                 src="/aonji-final-bw-logo.png"
               />
 
-              <View
-                style={[
-                  styles.details,
-                  {
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    padding: 2,
-                    margin: 1,
-                    fontFamily: "Helvetica-Bold",
-                    fontSize: 8,
-                    marginTop: 10,
-                  },
-                ]}
-              >
-                <View
-                  style={{
-                    marginLeft: 5,
-                    alignItems: "center",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  <Text>Issued by {bill?.createdBy?.name}</Text>
-                  <Text>Aonji Express Logistics Services</Text>
-                </View>
-
-                <Text style={{ marginLeft: 5 }}>Consigner Signature</Text>
-                <Text style={{ marginRight: 5 }}>Receiver Signature</Text>
-              </View>
-
+              {/* Receiver Signature + Terms & Conditions — pinned to bottom */}
               <View
                 style={{
                   flexDirection: "row",
-                  alignItems: "center", // 🔑 vertical alignment fix
-                  justifyContent: "center",
-                  marginTop: 4,
-                  gap: 2,
+                  position: "absolute",
+                  bottom: 6,
+                  left: 4,
+                  right: 4,
+                  border: "1 solid #d1d5db",
+                  borderRadius: 4,
+                  overflow: "hidden",
                 }}
               >
-                <Text
+                {/* Left: Receiver's Signature */}
+                <View
                   style={{
-                    fontSize: 10,
-                    fontFamily: "Helvetica-Bold",
-                    color: "#333",
+                    width: "38%",
+                    padding: 8,
+                    borderRight: "1 solid #d1d5db",
+                    justifyContent: "space-between",
                   }}
                 >
-                  Thank you for choosing Aonji Express Logistics. We value your
-                  trust and support.
-                </Text>
+                  <View>
+                    <Text
+                      style={{
+                        fontSize: 8,
+                        fontFamily: "Helvetica-Bold",
+                        color: "#1f2937",
+                        marginBottom: 2,
+                      }}
+                    >
+                      Receiver's Signature
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 6,
+                        fontFamily: "Helvetica",
+                        color: "#6b7280",
+                      }}
+                    >
+                      Received the above goods in good condition.
+                    </Text>
+                  </View>
 
-                <Image
-                  src="/handshake.png"
-                  style={{
-                    width: 14,
-                    height: 14, // 🔑 DO NOT use height:auto
-                    marginTop: -1, // 🔑 fine baseline adjustment
-                  }}
-                />
-              </View>
+                  {/* Dotted signature line */}
+                  <View
+                    style={{
+                      borderBottom: "1 dashed #9ca3af",
+                      marginTop: 20,
+                      marginBottom: 6,
+                    }}
+                  />
 
-              <View style={{ alignItems: "center", marginTop: 2 }}>
-                <Text
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      marginTop: 2,
+                    }}
+                  >
+                    <Text style={{ fontSize: 6, fontFamily: "Helvetica", color: "#4b5563" }}>
+                      Name: ___________
+                    </Text>
+                    <Text style={{ fontSize: 6, fontFamily: "Helvetica", color: "#4b5563" }}>
+                      Date: ___________
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Right: Terms & Conditions */}
+                <View
                   style={{
-                    fontSize: 6,
-                    fontFamily: "Helvetica-Bold",
-                    color: "#333",
-                    textAlign: "center",
-                    maxWidth: "90%",
+                    width: "62%",
+                    padding: 8,
+                    backgroundColor: "#eff6ff",
                   }}
                 >
-                  Note: Claims for undelivered or missing consignments must be
-                  raised within three (3) months from the booking date. No
-                  liability shall be accepted thereafter.
-                </Text>
+                  <Text
+                    style={{
+                      fontSize: 8,
+                      fontFamily: "Helvetica-Bold",
+                      color: "#1f2937",
+                      marginBottom: 4,
+                    }}
+                  >
+                    Terms & Conditions
+                  </Text>
+
+                  {[
+                    "By signing above, the receiver acknowledges that the goods have been received in good order and condition, as per the details mentioned in this Lorry Receipt.",
+                    "In case of any damage, shortage, or discrepancy, the same must be reported in writing to our office within 3 (three) months from the date of shipment.",
+                    "Claims raised after the above period shall not be entertained.",
+                    "Aonji Express Logistics Services shall not be held responsible for any delay, damage, shortage, or loss beyond the stipulated period.",
+                  ].map((clause, i) => (
+                    <View
+                      key={i}
+                      style={{ flexDirection: "row", marginBottom: 3, gap: 3 }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 6,
+                          fontFamily: "Helvetica-Bold",
+                          color: "#374151",
+                          marginTop: 0.5,
+                        }}
+                      >
+                        •
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 6,
+                          fontFamily: "Helvetica",
+                          color: "#374151",
+                          flex: 1,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {clause}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
               </View>
             </View>
             {index < 1 && <View style={styles.cutLine} />}

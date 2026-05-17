@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
 
     const trips = await Trip.find({
       destinationBranch: branchId,
-      status: "COMPLETED",
+      status: { $in: ["REACHED", "COMPLETED"] },  // ✅ only include trips that have reached or completed
       createdAt: { $gte: startDate, $lt: endDate },
     });
 

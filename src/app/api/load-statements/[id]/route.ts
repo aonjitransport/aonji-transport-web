@@ -8,24 +8,29 @@ import { User } from "../../../../../models/User";
 import { verifyToken } from "../../../../../lib/jwt";
 import { Bill } from "../../../../../models/Bill"
 import { Trip } from "../../../../../models/Trip"
-import { Branch } from "../../../../../models/Branch"
+import { Branch } from "../../../../../models/Branch" 
+import { requireRole } from "../../../../../lib/auth";
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> } // 👈 note: params is async
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireRole(req, ["admin", "super_admin", "agent"]);
+    if (auth instanceof NextResponse) return auth;
+ 
     await connectToDatabase();
-       // ✅ Force schemas to register before populate
+ 
+    // Force schemas to register before populate
     void Bill;
     void Trip;
-
-    const { id } = await context.params; // 👈 await it here
-
+ 
+    const { id } = await context.params;
+ 
     if (!id) {
       return NextResponse.json({ error: "Load Statement ID is required" }, { status: 400 });
     }
-
+ 
     const statement = await LoadStatement.findById(id)
       .populate("branch", "name city phone address")
       .populate({
@@ -34,12 +39,17 @@ export async function GET(
           path: "bills",
           select: "billId totalAmount city date",
         },
+      })
+      // ✅ Populate recordedBy inside each paymentHistory entry
+      .populate({
+        path: "paymentHistory.recordedBy",
+        select: "name ",
       });
-
+ 
     if (!statement) {
       return NextResponse.json({ error: "Load Statement not found" }, { status: 404 });
     }
-
+ 
     return NextResponse.json(statement, { status: 200 });
   } catch (error) {
     console.error("Error fetching load statement by ID:", error);

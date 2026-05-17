@@ -380,79 +380,130 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                 src="/aonji-final-bw-logo.png"
               />
 
-              <View
-                style={
-                  
-                  { ...styles.details,
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    padding: 2,
-                    margin: 1,
-                    fontFamily: "Helvetica-Bold",
-                    fontSize: 8,
-                    marginTop: 10,
-                  }
-                }
-              >
-                <View
-                  style={{
-                    marginLeft: 5,
-                    alignItems: "center",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  <Text>Issued by {bill?.createdBy?.name}</Text>
-                  <Text>Aonji Express Logistics Services</Text>
-                </View>
-
-                <Text style={{ marginLeft: 5 }}>Consigner Signature</Text>
-                <Text style={{ marginRight: 5 }}>Receiver Signature</Text>
-              </View>
-
+              {/* Receiver Signature + Terms & Conditions */}
               <View
                 style={{
                   flexDirection: "row",
-                  alignItems: "center", // 🔑 vertical alignment fix
-                  justifyContent: "center",
-                  marginTop: 4,
-                  gap: 2,
+                  marginTop: 8,
+                  marginHorizontal: 4,
+                  border: "1 solid #d1d5db",
+                  borderRadius: 4,
+                  overflow: "hidden",
                 }}
               >
-                <Text
+                {/* Left: Receiver's Signature */}
+                <View
                   style={{
-                    fontSize: 10,
-                    fontFamily: "Helvetica-Bold",
-                    color: "#333",
+                    width: "38%",
+                    padding: 8,
+                    borderRight: "1 solid #d1d5db",
+                    justifyContent: "space-between",
                   }}
                 >
-                  Thank you for choosing Aonji Express Logistics. We value your
-                  trust and support.
-                </Text>
+                  <View>
+                    <Text
+                      style={{
+                        fontSize: 8,
+                        fontFamily: "Helvetica-Bold",
+                        color: "#1f2937",
+                        marginBottom: 2,
+                      }}
+                    >
+                      Receiver's Signature
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 6,
+                        fontFamily: "Helvetica",
+                        color: "#6b7280",
+                      }}
+                    >
+                      Received the above goods in good condition.
+                    </Text>
+                  </View>
 
-                <Image
-                  src="/handshake.png"
-                  style={{
-                    width: 14,
-                    height: 14, // 🔑 DO NOT use height:auto
-                    marginTop: -1, // 🔑 fine baseline adjustment
-                  }}
-                />
-              </View>
+                  {/* Dotted signature line */}
+                  <View
+                    style={{
+                      borderBottom: "1 dashed #9ca3af",
+                      marginTop: 20,
+                      marginBottom: 6,
+                    }}
+                  />
 
-              <View style={{ alignItems: "center", marginTop: 2 }}>
-                <Text
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      marginTop: 2,
+                    }}
+                  >
+                    <Text style={{ fontSize: 6, fontFamily: "Helvetica", color: "#4b5563" }}>
+                      Name: ___________
+                    </Text>
+                    <Text style={{ fontSize: 6, fontFamily: "Helvetica", color: "#4b5563" }}>
+                      Date: ___________
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Right: Terms & Conditions */}
+                <View
                   style={{
-                    fontSize: 6,
-                    fontFamily: "Helvetica-Bold",
-                    color: "#333",
-                    textAlign: "center",
-                    maxWidth: "90%",
+                    width: "62%",
+                    padding: 8,
+                    backgroundColor: "#eff6ff",
                   }}
                 >
-                  Note: Claims for undelivered or missing consignments must be
-                  raised within three (3) months from the booking date. No
-                  liability shall be accepted thereafter.
-                </Text>
+                  <Text
+                    style={{
+                      fontSize: 8,
+                      fontFamily: "Helvetica-Bold",
+                      color: "#1f2937",
+                      marginBottom: 4,
+                    }}
+                  >
+                    Terms & Conditions
+                  </Text>
+
+                  {[
+                    "By signing above, the receiver acknowledges that the goods have been received in good order and condition, as per the details mentioned in this Lorry Receipt.",
+                    "In case of any damage, shortage, or discrepancy, the same must be reported in writing to our office within 3 (three) months from the date of shipment.",
+                    "Claims raised after the above period shall not be entertained.",
+                    "Aonji Express Logistics Services shall not be held responsible for any delay, damage, shortage, or loss beyond the stipulated period.",
+                  ].map((clause, i) => (
+                    <View
+                      key={i}
+                      style={{
+                        flexDirection: "row",
+                        marginBottom: 3,
+                        gap: 3,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 6,
+                          fontFamily: "Helvetica-Bold",
+                          color: "#374151",
+                          marginTop: 0.5,
+                        }}
+                      >
+                        •
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 6,
+                          fontFamily: "Helvetica",
+                          color: "#374151",
+                          flex: 1,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {clause}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
               </View>
             </View>
             {index < 1 && <View style={styles.cutLine} />}

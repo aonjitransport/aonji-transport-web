@@ -1,3 +1,4 @@
+// src/app/api/bills/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from 'lib/mongodb';
 import { Bill } from 'models/Bill';

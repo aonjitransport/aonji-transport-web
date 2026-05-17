@@ -207,6 +207,21 @@ const Page = () => {
         />
       ),
     },
+    {
+      headerName: "View",
+      width: 100,
+      cellRenderer: (params) => (   
+        <a
+          href={`/admin/bills/${params.data._id}`}
+          target="_blank" 
+          rel="noopener noreferrer"
+        >
+          <button className="px-2 py-1 text-xs rounded-md bg-gray-600 text-white hover:bg-gray-700 whitespace-nowrap">  
+            View PDF
+          </button>
+        </a>
+      ),  
+    }
   ];
 
   const steps = [
@@ -264,9 +279,20 @@ const Page = () => {
             </button>
           ))}
 
-          <button className="border px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+          <a
+             href={`/admin/tripsheets/${trip.tripId}/pdf-preview`}
+              
+              target="_blank"
+              rel="noopener noreferrer"
+          >
+
+         
+          <button 
+          
+          className="border px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition">
             Download Trip Sheet
           </button>
+           </a>
         </div>
       </div>
 
