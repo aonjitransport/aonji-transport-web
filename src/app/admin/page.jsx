@@ -10,6 +10,7 @@ import { FaClipboardList } from "react-icons/fa6";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useEffect, useState } from "react";
 import { GrDocumentVerified } from "react-icons/gr";
+import { FaTruckMoving } from "react-icons/fa";
 
 import { usePathname } from "next/navigation";  
 
@@ -19,6 +20,8 @@ const Dashbord = () => {
   const branchId = useAuthStore((s) => s.user?.branchId);
 
   const [userBranch, setUserBranch] = useState(null);
+  const [newBookingCount, setNewBookingCount] = useState(0);
+  const pathname = usePathname();
 
   
     /* ───────────── load user's branch ───────────── */
@@ -47,6 +50,36 @@ const Dashbord = () => {
       } 
       
     }, [branchId]);
+
+    useEffect(() => {
+      const controller = new AbortController();
+
+      const fetchCount = async () => {
+        try {
+          const res = await fetch("/api/shipment-bookings/count?status=NEW", {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            signal: controller.signal,
+          });
+          const data = await res.json();
+          if (res.ok) setNewBookingCount(Number(data?.count ?? 0));
+        } catch {
+          // ignore
+        }
+      };
+
+      if (pathname === "/admin") {
+        fetchCount();
+        const t = setInterval(fetchCount, 45_000);
+        return () => {
+          controller.abort();
+          clearInterval(t);
+        };
+      }
+
+      return () => controller.abort();
+    }, [pathname]);
   
 
   return (
@@ -114,6 +147,21 @@ const Dashbord = () => {
           <FaClipboardList className=" w-20 lg:w-44 h-auto " color="white" />
           <div className="text-gray-100">Trip Sheets</div>
         </Link>
+
+        {role === "super_admin" || role === "admin" ? (
+          <Link
+            href="/admin/booking-requests"
+            className="relative flex flex-col justify-center items-center h-64 w-auto lg:h-72 bg-blue-900 shadow-md hover:shadow-2xl lg:rounded-2xl rounded-xl "
+          >
+            <FaTruckMoving className=" w-20 lg:w-44 h-auto " color="white" />
+            <div className="text-gray-100">Booking Requests</div>
+            {newBookingCount > 0 ? (
+              <div className="absolute top-6 right-6 bg-red-500 text-white text-sm font-bold rounded-full min-w-10 h-10 px-3 flex items-center justify-center shadow-lg">
+                {newBookingCount}
+              </div>
+            ) : null}
+          </Link>
+        ) : null}
       </div>
     </>
   );

@@ -3,10 +3,11 @@
 import React from "react";
 import Header from "../components/Header.jsx";
 import AnimatedTruck from "../components/animated/AnimatedTruck.jsx";
+import BookShipmentDialog from "../components/BookShipmentDialog"
 
 import Lottie from "lottie-react";
 import Link from "next/link";
-import Footer from "../components/Footer.jsx";
+
 
 import loadingAnimationData from "../../public/assets/animations/aonjiLoading.json";
 import { useState, useEffect } from "react";
@@ -36,6 +37,7 @@ import {
 
 const homePage = () => {
   const [loading, setLoading] = useState(true);
+  const [shipmentDialogOpen, setShipmentDialogOpen] = useState(false);
 
   useEffect(() => {
     // Set a timeout to hide the loading animation after 3 seconds
@@ -179,8 +181,10 @@ const homePage = () => {
 
             {/* CTA BUTTONS */}
             <div className="flex gap-3 mt-6 flex-wrap items-center">
-              <button className="flex items-center gap-2 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium font-roboto rounded-lg text-sm px-6 py-3 transition-colors">
-                Get a Free Quote →
+              <button 
+              onClick={() => setShipmentDialogOpen(true)}
+              className="flex items-center gap-2 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium font-roboto rounded-lg text-sm px-6 py-3 transition-colors">
+                Book Your Shipment →
               </button>
 
               <button className="py-3 px-5 text-sm font-medium text-gray-800 bg-white rounded-full border border-gray-300 hover:bg-gray-50 hover:text-blue-700 transition-colors">
@@ -621,8 +625,10 @@ const homePage = () => {
 
           {/* Right — Buttons */}
           <div className="flex flex-col gap-3 flex-shrink-0 w-full md:w-auto">
-            <button className="flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white font-roboto font-medium text-sm px-6 py-3 rounded-lg transition-colors whitespace-nowrap">
-              Get a Free Quote →
+            <button 
+              onClick={() => setShipmentDialogOpen(true)}
+            className="flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white font-roboto font-medium text-sm px-6 py-3 rounded-lg transition-colors whitespace-nowrap">
+              Book Now →
             </button>
             <button className="flex items-center justify-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 hover:text-blue-700 text-gray-800 font-roboto font-medium text-sm px-6 py-3 rounded-lg transition-colors whitespace-nowrap">
               <FaPhone className="text-blue-600" />
@@ -633,6 +639,11 @@ const homePage = () => {
       </section>
 
       {/* ============ END STATS + CTA ============ */}
+
+      <BookShipmentDialog
+  open={shipmentDialogOpen}
+  onClose={() => setShipmentDialogOpen(false)}
+/>
     </>
   );
 };
