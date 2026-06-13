@@ -6,10 +6,7 @@ import {
   View,
   Document,
   StyleSheet,
-  PDFViewer,
 } from "@react-pdf/renderer";
-
-import { LuHeartHandshake } from "react-icons/lu";
 
 import { Image } from "@react-pdf/renderer";
 
@@ -171,10 +168,33 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
             <View style={styles.billContainer}>
               {/* Header Section */}
               <View style={styles.container}>
+                {/* Brand Name */}
                 <View
                   style={{
                     alignItems: "center",
-                    padding: 4,
+                    paddingVertical: 5,
+                    paddingHorizontal: 4,
+                    backgroundColor: "#ffffff",
+                    marginBottom: 0,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      letterSpacing: 2,
+                      color: "#111",
+                      textAlign: "center",
+                      fontFamily: "Helvetica-Bold",
+                    }}
+                  >
+                    AONJI EXPRESS LOGISTICS
+                  </Text>
+                </View>
+                {/* LR subtitle bar */}
+                <View
+                  style={{
+                    alignItems: "center",
+                    padding: 3,
                     backgroundColor: "#282828",
                     marginBottom: 2,
                   }}
@@ -182,7 +202,7 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                   <Text
                     style={
                       {
-                        fontSize: 10,
+                        fontSize: 9,
                         letterSpacing: 2,
                         color: "white",
                         textAlign: "center",
@@ -408,7 +428,7 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                 style={{
                   flexDirection: "row",
                   position: "absolute",
-                  bottom: 6,
+                  bottom: 4,
                   left: 4,
                   right: 4,
                   border: "1 solid #d1d5db",
@@ -420,7 +440,7 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                 <View
                   style={{
                     width: "38%",
-                    padding: 8,
+                    padding: 5,
                     borderRight: "1 solid #d1d5db",
                     justifyContent: "space-between",
                   }}
@@ -428,17 +448,17 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                   <View>
                     <Text
                       style={{
-                        fontSize: 8,
+                        fontSize: 7,
                         fontFamily: "Helvetica-Bold",
                         color: "#1f2937",
-                        marginBottom: 2,
+                        marginBottom: 1,
                       }}
                     >
                       Receiver's Signature
                     </Text>
                     <Text
                       style={{
-                        fontSize: 6,
+                        fontSize: 5.5,
                         fontFamily: "Helvetica",
                         color: "#6b7280",
                       }}
@@ -451,8 +471,8 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                   <View
                     style={{
                       borderBottom: "1 dashed #9ca3af",
-                      marginTop: 20,
-                      marginBottom: 6,
+                      marginTop: 12,
+                      marginBottom: 4,
                     }}
                   />
 
@@ -460,13 +480,13 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                     style={{
                       flexDirection: "row",
                       justifyContent: "space-between",
-                      marginTop: 2,
+                      marginTop: 1,
                     }}
                   >
-                    <Text style={{ fontSize: 6, fontFamily: "Helvetica", color: "#4b5563" }}>
+                    <Text style={{ fontSize: 5.5, fontFamily: "Helvetica", color: "#4b5563" }}>
                       Name: ___________
                     </Text>
-                    <Text style={{ fontSize: 6, fontFamily: "Helvetica", color: "#4b5563" }}>
+                    <Text style={{ fontSize: 5.5, fontFamily: "Helvetica", color: "#4b5563" }}>
                       Date: ___________
                     </Text>
                   </View>
@@ -476,16 +496,16 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                 <View
                   style={{
                     width: "62%",
-                    padding: 8,
+                    padding: 5,
                     backgroundColor: "#eff6ff",
                   }}
                 >
                   <Text
                     style={{
-                      fontSize: 8,
+                      fontSize: 7,
                       fontFamily: "Helvetica-Bold",
                       color: "#1f2937",
-                      marginBottom: 4,
+                      marginBottom: 3,
                     }}
                   >
                     Terms & Conditions
@@ -499,11 +519,11 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                   ].map((clause, i) => (
                     <View
                       key={i}
-                      style={{ flexDirection: "row", marginBottom: 3, gap: 3 }}
+                      style={{ flexDirection: "row", marginBottom: 2, gap: 3 }}
                     >
                       <Text
                         style={{
-                          fontSize: 6,
+                          fontSize: 5.5,
                           fontFamily: "Helvetica-Bold",
                           color: "#374151",
                           marginTop: 0.5,
@@ -513,11 +533,11 @@ const PDFDocument: React.FC<PDFDocumentProps> = ({ bill }) => {
                       </Text>
                       <Text
                         style={{
-                          fontSize: 6,
+                          fontSize: 5.5,
                           fontFamily: "Helvetica",
                           color: "#374151",
                           flex: 1,
-                          lineHeight: 1.4,
+                          lineHeight: 1.3,
                         }}
                       >
                         {clause}

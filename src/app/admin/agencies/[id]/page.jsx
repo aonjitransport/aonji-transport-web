@@ -41,6 +41,12 @@ import {
   FaMoneyBillWave,
   FaFileAlt,
   FaBullhorn,
+  FaBoxOpen,
+  FaExclamationTriangle,
+  FaRoute,
+  FaChartLine,
+  FaCreditCard,
+  FaUniversity,
 } from "react-icons/fa";
 
 import {
@@ -55,6 +61,8 @@ const AgencyPage = () => {
   const messagesEndRef = useRef(null);
   const { id } = useParams();
   const [branchNotifications, setBranchNotifications] = useState([]);
+  const [activeAlertTab, setActiveAlertTab] = useState("messages");
+  const [agencyTrips, setAgencyTrips] = useState([]);
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollTop = messagesEndRef.current.scrollHeight;
@@ -109,6 +117,263 @@ const AgencyPage = () => {
     totalArticles: 0,
   });
   const [tripTimeRange, setTripTimeRange] = useState("all");
+
+  const formatRelativeTime = (dateValue) => {
+    if (!dateValue) return "Now";
+
+    const date = new Date(dateValue);
+    const diffMs = Date.now() - date.getTime();
+    const diffMinutes = Math.floor(diffMs / 60000);
+
+    if (Number.isNaN(diffMinutes) || diffMinutes < 1) return "Now";
+    if (diffMinutes < 60) return `${diffMinutes}m`;
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours}h`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d`;
+  };
+
+  const getBranchName = (branchValue) => {
+    if (!branchValue) return "Unknown branch";
+    if (typeof branchValue === "string") return branchValue;
+    return branchValue.name || branchValue.city || "Unknown branch";
+  };
+
+  const buildOperationsAlerts = (trips) => {
+    const recentTrips = [...(trips || [])].slice(0, 8);
+
+    return recentTrips.map((trip) => {
+      const status = trip.status || "PLANNED";
+      const origin = getBranchName(trip.originBranch);
+      const destination = getBranchName(trip.destinationBranch);
+      const tripLabel = trip.tripId || "Trip";
+
+      if (status === "PLANNED" || status === "PENDING") {
+        return {
+          id: `${trip._id}-planned`,
+          title: `${tripLabel} is awaiting trip assignment`,
+          detail: `${origin} to ${destination} · ${trip.totalArticels || 0} articles`,
+          time: formatRelativeTime(trip.createdAt),
+          icon: FaExclamationTriangle,
+          iconClass: "bg-amber-100 text-amber-600",
+          dotClass: "bg-amber-500",
+        };
+      }
+
+      if (status === "IN_TRANSIT") {
+        return {
+          id: `${trip._id}-transit`,
+          title: `${tripLabel} departed from ${origin}`,
+          detail: `Destination: ${destination} · Vehicle: ${trip.vehicleNumber || "Not assigned"}`,
+          time: formatRelativeTime(trip.updatedAt || trip.createdAt),
+          icon: FaTruck,
+          iconClass: "bg-blue-100 text-blue-600",
+          dotClass: "bg-blue-500",
+        };
+      }
+
+      if (status === "REACHED") {
+        return {
+          id: `${trip._id}-reached`,
+          title: `${tripLabel} arrived at ${destination}`,
+          detail: "Awaiting delivery completion and POD update",
+          time: formatRelativeTime(trip.updatedAt || trip.createdAt),
+          icon: FaMapMarkerAlt,
+          iconClass: "bg-emerald-100 text-emerald-600",
+          dotClass: "bg-emerald-500",
+        };
+      }
+
+      return {
+        id: `${trip._id}-completed`,
+        title: `${tripLabel} delivery completed`,
+        detail: `${origin} to ${destination} · Revenue ${formatCurrency(trip.totalAmount)}`,
+        time: formatRelativeTime(trip.updatedAt || trip.createdAt),
+        icon: FaCheckCircle,
+        iconClass: "bg-green-100 text-green-600",
+        dotClass: "bg-green-500",
+      };
+    });
+  };
+
+  const buildAgencyBranchAlerts = (branchData, summary, statements, trips) => {
+    if (!branchData) return [];
+
+    const alerts = [];
+    const recentTrips = [...(trips || [])];
+    const latestTrip = recentTrips[0];
+    const latestStatement = [...(statements || [])].sort(
+      (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
+    )[0];
+    const lastTripDate = latestTrip?.createdAt ? new Date(latestTrip.createdAt) : null;
+    const daysSinceLastTrip = lastTripDate
+      ? Math.floor((Date.now() - lastTripDate.getTime()) / 86400000)
+      : null;
+    const serviceAreaCount = branchData.serviceAreas?.length || 0;
+    const monthlyRevenue = summary?.totalRevenue || 0;
+
+    if (latestStatement) {
+      alerts.push({
+        id: "statement-generated",
+        title: `${months[latestStatement.month] || "Monthly"} ${latestStatement.year} statement generated`,
+        detail: `Statement ${latestStatement.loadStatementId || ""} · Net payable ${formatCurrency(latestStatement.netPayableToMain)}`,
+        time: formatRelativeTime(latestStatement.createdAt),
+        icon: FaFileAlt,
+        iconClass: "bg-emerald-100 text-emerald-600",
+        dotClass: "bg-emerald-500",
+      });
+    }
+
+    if (daysSinceLastTrip === null || daysSinceLastTrip >= 10) {
+      alerts.push({
+        id: "booking-gap",
+        title: `${branchData.name} has no recent bookings`,
+        detail: daysSinceLastTrip === null
+          ? "No trip activity found for this agency yet"
+          : `Last trip activity was ${daysSinceLastTrip} days ago`,
+        time: "Now",
+        icon: FaExclamationTriangle,
+        iconClass: "bg-amber-100 text-amber-600",
+        dotClass: "bg-amber-500",
+      });
+    }
+
+    alerts.push({
+      id: "branch-status",
+      title: `${branchData.name} is ${branchData.isActive ? "active" : "inactive"}`,
+      detail: `${branchData.city || "Branch"} · Code ${branchData.code || "N/A"} · ${serviceAreaCount} service areas`,
+      time: formatRelativeTime(branchData.updatedAt || branchData.createdAt),
+      icon: FaBuilding,
+      iconClass: branchData.isActive
+        ? "bg-green-100 text-green-600"
+        : "bg-red-100 text-red-600",
+      dotClass: branchData.isActive ? "bg-green-500" : "bg-red-500",
+    });
+
+    if (monthlyRevenue >= 100000) {
+      alerts.push({
+        id: "revenue-milestone",
+        title: `${branchData.name} crossed ${formatCurrency(100000)} revenue`,
+        detail: `Current selected range revenue is ${formatCurrency(monthlyRevenue)}`,
+        time: "Now",
+        icon: FaChartLine,
+        iconClass: "bg-blue-100 text-blue-600",
+        dotClass: "bg-blue-500",
+      });
+    }
+
+    alerts.push({
+      id: "activity-summary",
+      title: `${summary?.totalTrips || 0} trips linked with this agency`,
+      detail: `${summary?.completed || 0} completed · ${summary?.inTransit || 0} in transit · ${summary?.reached || 0} reached`,
+      time: "Now",
+      icon: FaBullhorn,
+      iconClass: "bg-indigo-100 text-indigo-600",
+      dotClass: "bg-indigo-500",
+    });
+
+    return alerts.slice(0, 8);
+  };
+
+  const buildFinancePaymentAlerts = (statements) => {
+    const alerts = [];
+    const sortedStatements = [...(statements || [])].sort(
+      (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
+    );
+    const pendingStatements = sortedStatements.filter(
+      (statement) => statement.paymentStatus !== "paid",
+    );
+    const latestStatement = sortedStatements[0];
+    const totalBalance = pendingStatements.reduce(
+      (sum, statement) => sum + Number(statement.balanceDue || 0),
+      0,
+    );
+    const recentPaymentStatement = sortedStatements.find(
+      (statement) => statement.paymentHistory?.length,
+    );
+    const recentPayment =
+      recentPaymentStatement?.paymentHistory?.[
+        recentPaymentStatement.paymentHistory.length - 1
+      ];
+
+    if (latestStatement) {
+      alerts.push({
+        id: "latest-statement",
+        title: `${months[latestStatement.month] || "Monthly"} ${latestStatement.year} statement ready`,
+        detail: `Net payable ${formatCurrency(latestStatement.netPayableToMain)} · Balance ${formatCurrency(latestStatement.balanceDue)}`,
+        time: formatRelativeTime(latestStatement.createdAt),
+        icon: FaFileAlt,
+        iconClass: "bg-blue-100 text-blue-600",
+        dotClass: "bg-blue-500",
+      });
+    }
+
+    if (totalBalance > 0) {
+      alerts.push({
+        id: "total-outstanding",
+        title: `Outstanding balance ${formatCurrency(totalBalance)}`,
+        detail: `${pendingStatements.length} statement${pendingStatements.length === 1 ? "" : "s"} still pending or partially paid`,
+        time: "Now",
+        icon: FaWallet,
+        iconClass: totalBalance >= 50000
+          ? "bg-red-100 text-red-600"
+          : "bg-amber-100 text-amber-600",
+        dotClass: totalBalance >= 50000 ? "bg-red-500" : "bg-amber-500",
+      });
+    }
+
+    if (recentPayment) {
+      alerts.push({
+        id: "recent-payment",
+        title: `Payment of ${formatCurrency(recentPayment.amount)} recorded`,
+        detail: `For statement ${recentPaymentStatement.loadStatementId || ""} · ${recentPayment.note || "No note added"}`,
+        time: formatRelativeTime(recentPayment.paidOn),
+        icon: FaCreditCard,
+        iconClass: "bg-emerald-100 text-emerald-600",
+        dotClass: "bg-emerald-500",
+      });
+    }
+
+    pendingStatements.slice(0, 4).forEach((statement) => {
+      const isPartial = statement.paymentStatus === "partial";
+
+      alerts.push({
+        id: `${statement._id}-payment-status`,
+        title: isPartial
+          ? `Partial payment pending for ${statement.loadStatementId}`
+          : `Payment pending for ${statement.loadStatementId}`,
+        detail: `${months[statement.month] || "Month"} ${statement.year} · Balance due ${formatCurrency(statement.balanceDue)}`,
+        time: formatRelativeTime(statement.updatedAt || statement.createdAt),
+        icon: isPartial ? FaMoneyBillWave : FaExclamationTriangle,
+        iconClass: isPartial
+          ? "bg-indigo-100 text-indigo-600"
+          : "bg-orange-100 text-orange-600",
+        dotClass: isPartial ? "bg-indigo-500" : "bg-orange-500",
+      });
+    });
+
+    const paidStatements = sortedStatements.filter(
+      (statement) => statement.paymentStatus === "paid",
+    );
+
+    if (paidStatements.length > 0) {
+      const latestPaid = paidStatements[0];
+
+      alerts.push({
+        id: "latest-paid",
+        title: `Payment completed for ${latestPaid.loadStatementId}`,
+        detail: `${months[latestPaid.month] || "Month"} ${latestPaid.year} · Paid ${formatCurrency(latestPaid.paidAmount)}`,
+        time: formatRelativeTime(latestPaid.updatedAt || latestPaid.createdAt),
+        icon: FaCheckCircle,
+        iconClass: "bg-green-100 text-green-600",
+        dotClass: "bg-green-500",
+      });
+    }
+
+    return alerts.slice(0, 8);
+  };
 
   // ✅ Month & Year options
   const months = [
@@ -301,6 +566,7 @@ const AgencyPage = () => {
     )
       .then((r) => r.json())
       .then((data) => {
+        setAgencyTrips(data.trips || []);
         if (data.summary) setTripSummary(data.summary);
       })
       .catch((err) => console.error("Trips fetch error:", err));
@@ -603,6 +869,21 @@ const AgencyPage = () => {
     );
   };
   const formatCurrency = (num) => `₹ ${Number(num || 0).toLocaleString()}`;
+
+  const operationsAlerts = buildOperationsAlerts(agencyTrips);
+  const agencyBranchAlerts = buildAgencyBranchAlerts(
+    branch,
+    tripSummary,
+    loadStatements,
+    agencyTrips,
+  );
+  const financePaymentAlerts = buildFinancePaymentAlerts(loadStatements);
+  const unreadMessageCount = branchNotifications.filter((n) => !n.isRead).length;
+  const totalAlertCount =
+    unreadMessageCount +
+    operationsAlerts.length +
+    agencyBranchAlerts.length +
+    financePaymentAlerts.length;
 
   const chartData = [
     {
@@ -1182,20 +1463,75 @@ const AgencyPage = () => {
                   Messages & Alerts
                 </p>
               </div>
-              {branchNotifications.filter((n) => !n.isRead).length > 0 && (
+              {totalAlertCount > 0 && (
                 <span className="text-[11px] bg-blue-500 text-white px-2 py-0.5 rounded-full font-medium">
-                  {branchNotifications.filter((n) => !n.isRead).length} new
+                  {totalAlertCount} active
                 </span>
               )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 px-3 py-2 border-b bg-white sm:grid-cols-4">
+              <button
+                type="button"
+                onClick={() => setActiveAlertTab("messages")}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                  activeAlertTab === "messages"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                }`}
+              >
+                Messages
+                {unreadMessageCount > 0 ? ` (${unreadMessageCount})` : ""}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveAlertTab("operations")}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                  activeAlertTab === "operations"
+                    ? "bg-slate-900 text-white shadow-sm"
+                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                }`}
+              >
+                Operations
+                {operationsAlerts.length > 0 ? ` (${operationsAlerts.length})` : ""}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveAlertTab("branch")}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                  activeAlertTab === "branch"
+                    ? "bg-emerald-600 text-white shadow-sm"
+                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                }`}
+              >
+                Branch
+                {agencyBranchAlerts.length > 0
+                  ? ` (${agencyBranchAlerts.length})`
+                  : ""}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveAlertTab("finance")}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                  activeAlertTab === "finance"
+                    ? "bg-orange-600 text-white shadow-sm"
+                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                }`}
+              >
+                Finance
+                {financePaymentAlerts.length > 0
+                  ? ` (${financePaymentAlerts.length})`
+                  : ""}
+              </button>
             </div>
 
             {/* Messages List - fixed scroll area */}
             <div
               ref={messagesEndRef}
               className="overflow-y-auto px-3 py-2 flex flex-col gap-2 bg-gray-50"
-              style={{ height: "calc(100% - 52px - 56px)" }}
+              style={{ height: "calc(100% - 52px - 89px - 56px)" }}
             >
-              {branchNotifications.length === 0 ? (
+              {activeAlertTab === "messages" && branchNotifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <FaBell className="text-gray-200 text-4xl mb-3" />
                   <p className="text-sm text-gray-400 font-medium">
@@ -1205,7 +1541,7 @@ const AgencyPage = () => {
                     Chat with your team
                   </p>
                 </div>
-              ) : (
+              ) : activeAlertTab === "messages" ? (
                 branchNotifications.map((n) => {
                   const isMine =
                     n.sender?._id?.toString() === user?.id?.toString() ||
@@ -1254,6 +1590,204 @@ const AgencyPage = () => {
                     </div>
                   );
                 })
+              ) : activeAlertTab === "operations" && operationsAlerts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <FaRoute className="text-gray-200 text-4xl mb-3" />
+                  <p className="text-sm text-gray-400 font-medium">
+                    No operations alerts
+                  </p>
+                  <p className="text-xs text-gray-300 mt-1">
+                    Trip, LR, and delivery updates will appear here
+                  </p>
+                </div>
+              ) : activeAlertTab === "operations" ? (
+                <div className="space-y-2">
+                  <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-blue-600 shadow-sm">
+                        <FaBoxOpen className="text-sm" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wide text-blue-900">
+                          Operations Notifications
+                        </p>
+                        <p className="text-[11px] text-blue-700">
+                          Trips, delivery, and LR movement for this agency
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {operationsAlerts.map((alert) => {
+                    const AlertIcon = alert.icon;
+
+                    return (
+                      <div
+                        key={alert.id}
+                        className="group rounded-xl border border-gray-100 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-100 hover:shadow-md"
+                      >
+                        <div className="flex gap-3">
+                          <div
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${alert.iconClass}`}
+                          >
+                            <AlertIcon className="text-sm" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-sm font-semibold text-slate-900 leading-snug">
+                                {alert.title}
+                              </p>
+                              <span className="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-500">
+                                {alert.time}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                              {alert.detail}
+                            </p>
+                            <div className="mt-2 flex items-center gap-2 text-[11px] font-medium text-gray-400">
+                              <span
+                                className={`h-2 w-2 rounded-full ${alert.dotClass}`}
+                              />
+                              Live operations update
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : activeAlertTab === "branch" && agencyBranchAlerts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <FaBuilding className="text-gray-200 text-4xl mb-3" />
+                  <p className="text-sm text-gray-400 font-medium">
+                    No branch alerts
+                  </p>
+                  <p className="text-xs text-gray-300 mt-1">
+                    Branch performance and activity updates will appear here
+                  </p>
+                </div>
+              ) : activeAlertTab === "branch" ? (
+                <div className="space-y-2">
+                  <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-emerald-600 shadow-sm">
+                        <FaBuilding className="text-sm" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wide text-emerald-900">
+                          Agency / Branch Notifications
+                        </p>
+                        <p className="text-[11px] text-emerald-700">
+                          Performance, activity, status, and branch coverage
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {agencyBranchAlerts.map((alert) => {
+                    const AlertIcon = alert.icon;
+
+                    return (
+                      <div
+                        key={alert.id}
+                        className="group rounded-xl border border-gray-100 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-100 hover:shadow-md"
+                      >
+                        <div className="flex gap-3">
+                          <div
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${alert.iconClass}`}
+                          >
+                            <AlertIcon className="text-sm" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-sm font-semibold text-slate-900 leading-snug">
+                                {alert.title}
+                              </p>
+                              <span className="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-500">
+                                {alert.time}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                              {alert.detail}
+                            </p>
+                            <div className="mt-2 flex items-center gap-2 text-[11px] font-medium text-gray-400">
+                              <span
+                                className={`h-2 w-2 rounded-full ${alert.dotClass}`}
+                              />
+                              Branch activity update
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : financePaymentAlerts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <FaWallet className="text-gray-200 text-4xl mb-3" />
+                  <p className="text-sm text-gray-400 font-medium">
+                    No finance alerts
+                  </p>
+                  <p className="text-xs text-gray-300 mt-1">
+                    Statements, balances, and payment updates will appear here
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="rounded-xl border border-orange-100 bg-orange-50/70 p-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-orange-600 shadow-sm">
+                        <FaUniversity className="text-sm" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wide text-orange-900">
+                          Finance & Payment Notifications
+                        </p>
+                        <p className="text-[11px] text-orange-700">
+                          Statements, balances, payouts, and payment status
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {financePaymentAlerts.map((alert) => {
+                    const AlertIcon = alert.icon;
+
+                    return (
+                      <div
+                        key={alert.id}
+                        className="group rounded-xl border border-gray-100 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-orange-100 hover:shadow-md"
+                      >
+                        <div className="flex gap-3">
+                          <div
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${alert.iconClass}`}
+                          >
+                            <AlertIcon className="text-sm" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-sm font-semibold text-slate-900 leading-snug">
+                                {alert.title}
+                              </p>
+                              <span className="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-500">
+                                {alert.time}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                              {alert.detail}
+                            </p>
+                            <div className="mt-2 flex items-center gap-2 text-[11px] font-medium text-gray-400">
+                              <span
+                                className={`h-2 w-2 rounded-full ${alert.dotClass}`}
+                              />
+                              Finance update
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
 
@@ -1262,30 +1796,51 @@ const AgencyPage = () => {
               className="flex gap-2 items-center px-2 py-2 border-t bg-gray-50"
               style={{ height: "56px" }}
             >
-              <input
-                type="text"
-                value={messageInput}
-                onChange={(e) => setMessageInput(e.target.value)}
-                onKeyPress={(e) => {
-                  if (
-                    e.key === "Enter" &&
-                    !messageSending &&
-                    messageInput.trim()
-                  ) {
-                    handleSendMessage();
-                  }
-                }}
-                placeholder="Type message..."
-                disabled={!user?.id || messageSending}
-                className="flex-1 text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-              />
-              <button
-                onClick={handleSendMessage}
-                disabled={!user?.id || messageSending || !messageInput.trim()}
-                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-              >
-                {messageSending ? "..." : "Send"}
-              </button>
+              {activeAlertTab === "messages" ? (
+                <>
+                  <input
+                    type="text"
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (
+                        e.key === "Enter" &&
+                        !messageSending &&
+                        messageInput.trim()
+                      ) {
+                        handleSendMessage();
+                      }
+                    }}
+                    placeholder="Type message..."
+                    disabled={!user?.id || messageSending}
+                    className="flex-1 text-sm px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={!user?.id || messageSending || !messageInput.trim()}
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {messageSending ? "..." : "Send"}
+                  </button>
+                </>
+              ) : (
+                <div className="flex w-full items-center justify-between rounded-lg bg-white px-3 py-2 text-xs text-gray-500">
+                  <span>
+                    {activeAlertTab === "operations"
+                      ? "Operations alerts update with trip activity."
+                      : activeAlertTab === "branch"
+                        ? "Branch alerts update with agency activity."
+                        : "Finance alerts update with statements and payments."}
+                  </span>
+                  <span className="font-semibold text-slate-700">
+                    {activeAlertTab === "operations"
+                      ? operationsAlerts.length
+                      : activeAlertTab === "branch"
+                        ? agencyBranchAlerts.length
+                        : financePaymentAlerts.length} active
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>

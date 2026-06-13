@@ -35,7 +35,7 @@ import { AlertComponent } from "../../../components/Alert";
 import useBillsStore from "../../../store/billsStore";
 import { useAuthStore } from "../../../store/useAuthStore";
 import useBranchStore from "../../../store/branchStore";
-import { pdf, PDFDownloadLink } from "@react-pdf/renderer";
+import { pdf } from "@react-pdf/renderer";
 import BillPdfDocument from "./components/BillPdfDocument";
 import {
   Table,
@@ -45,7 +45,6 @@ import {
   TableRow,
   TableCell,
 } from "@nextui-org/table";
-import { PDFViewer } from "@react-pdf/renderer";
 
 const InvoicePage = () => {
   const user = useAuthStore((state) => state.user);
@@ -67,9 +66,10 @@ const InvoicePage = () => {
 
   const { createBill, loadingToCreateBill, billCreateStatus, billResponse } =
     useBillsStore();
-  const currentPrintBill = useBillsStore((state) => state.billResponse);
-
   const [createBillResponse, setCreateBillResponse] = useState(null);
+  const [lrPdfUrl, setLrPdfUrl] = useState("");
+  const [lrPdfLoading, setLrPdfLoading] = useState(false);
+  const [lrPdfError, setLrPdfError] = useState("");
 
   const [billCreated, setBillCreated] = useState(false);
 
@@ -248,6 +248,9 @@ const InvoicePage = () => {
   const handleSubmit = async () => {
     // post new bill
 
+    setLrPdfUrl("");
+    setLrPdfError("");
+
     const res = await createBill(bill);
 
     setCreateBillResponse(res);
@@ -260,8 +263,85 @@ const InvoicePage = () => {
     console.log("API response:", res);
   };
 
-  const printLR = () => {
-    console.log("Printing LR for bill:", createBillResponse);
+  useEffect(() => {
+    if (!createBillResponse) {
+      setLrPdfUrl("");
+      setLrPdfLoading(false);
+      setLrPdfError("");
+      return;
+    }
+
+    let cancelled = false;
+    let generatedUrl = "";
+
+    const prepareLrPdf = async () => {
+      setLrPdfLoading(true);
+      setLrPdfError("");
+      setLrPdfUrl("");
+
+      try {
+        const blob = await pdf(
+          <BillPdfDocument bill={createBillResponse} />
+        ).toBlob();
+        generatedUrl = URL.createObjectURL(blob);
+
+        if (cancelled) {
+          URL.revokeObjectURL(generatedUrl);
+          return;
+        }
+
+        setLrPdfUrl(generatedUrl);
+      } catch (error) {
+        console.error("Error preparing LR PDF:", error);
+        if (!cancelled) {
+          setLrPdfError("Unable to prepare LR PDF. Please try again.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLrPdfLoading(false);
+        }
+      }
+    };
+
+    prepareLrPdf();
+
+    return () => {
+      cancelled = true;
+      if (generatedUrl) {
+        URL.revokeObjectURL(generatedUrl);
+      }
+    };
+  }, [createBillResponse]);
+
+  const handlePrintLR = () => {
+    if (!lrPdfUrl) return;
+
+    const printFrame = document.createElement("iframe");
+    printFrame.style.position = "fixed";
+    printFrame.style.right = "0";
+    printFrame.style.bottom = "0";
+    printFrame.style.width = "0";
+    printFrame.style.height = "0";
+    printFrame.style.border = "0";
+    printFrame.src = lrPdfUrl;
+
+    const removePrintFrame = () => {
+      if (printFrame.parentNode) {
+        printFrame.parentNode.removeChild(printFrame);
+      }
+    };
+
+    printFrame.onload = () => {
+      const printWindow = printFrame.contentWindow;
+      printWindow?.focus();
+      printWindow?.print();
+      if (printWindow) {
+        printWindow.onafterprint = removePrintFrame;
+      }
+      setTimeout(removePrintFrame, 60000);
+    };
+
+    document.body.appendChild(printFrame);
   };
 
   const parcelTypes = [
@@ -297,8 +377,6 @@ const InvoicePage = () => {
   const [loading, setLoading] = useState(false);
   const [selectedConsigner, setSelectedConsigner] = useState(null);
   const [open, setOpen] = useState(false);
-  const [printLrDialogOpen, setPrintLrDialogOpen] = useState(false);
-
   const [consigneeInputValues, setConsigneeInputValues] = useState({});
   const [consigneeOptions, setConsigneeOptions] = useState({});
   const [consigneeLoading, setConsigneeLoading] = useState({});
@@ -417,6 +495,10 @@ const InvoicePage = () => {
 
   const handleSuccessDailogClose = () => {
     setOpenSuccessDialog(false);
+    setCreateBillResponse(null);
+    setLrPdfUrl("");
+    setLrPdfLoading(false);
+    setLrPdfError("");
 
     // 🔹 Reset all sub-states first
     setConsignerDetails({
@@ -823,14 +905,23 @@ const InvoicePage = () => {
                     {/* Type */}
                     <div className="col-span-2">
                       <Autocomplete
+                        freeSolo
                         fullWidth
-                        options={parcelTypes} // ✅ your area list
-                        value={perticularConsigneeDetails[index].type || ""} // ✅ controlled value
+                        options={parcelTypes}
+                        value={perticularConsigneeDetails[index].type || ""}
+                        inputValue={perticularConsigneeDetails[index].type || ""}
                         onChange={(event, newValue) =>
                           handlePerticularConsigneeDetailsInputChange(
                             index,
                             "type",
-                            newValue
+                            newValue || ""
+                          )
+                        }
+                        onInputChange={(event, newInputValue) =>
+                          handlePerticularConsigneeDetailsInputChange(
+                            index,
+                            "type",
+                            newInputValue
                           )
                         }
                         renderInput={(params) => (
@@ -1018,6 +1109,16 @@ const InvoicePage = () => {
                 Your bill has been successfully created! with Bill No:{" "}
                 {createBillResponse ? createBillResponse.lrNumber : ""}
               </DialogContentText>
+              {lrPdfLoading && (
+                <DialogContentText sx={{ mt: 1 }}>
+                  Preparing LR for print...
+                </DialogContentText>
+              )}
+              {lrPdfError && (
+                <DialogContentText color="error" sx={{ mt: 1 }}>
+                  {lrPdfError}
+                </DialogContentText>
+              )}
               <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
                 <Lottie
                   animationData={succesTickLottie}
@@ -1038,50 +1139,28 @@ const InvoicePage = () => {
 
         <DialogActions>
           {billCreateStatus === "success" && (
-            <Button>
-              <PDFDownloadLink
-                document={<BillPdfDocument bill={createBillResponse} />}
-                fileName={`LR_${
-                  createBillResponse ? createBillResponse.lrNumber : "bill"
-                }.pdf`}
-              >
-                Download LR
-              </PDFDownloadLink>
+            <Button
+              component="a"
+              href={lrPdfUrl || undefined}
+              download={`LR_${
+                createBillResponse ? createBillResponse.lrNumber : "bill"
+              }.pdf`}
+              disabled={lrPdfLoading || !lrPdfUrl}
+            >
+              {lrPdfLoading ? "Preparing LR..." : "Download LR"}
             </Button>
           )}
           {billCreateStatus === "success" && (
             <Button
-              onClick={() => {
-                setPrintLrDialogOpen(true),
-                  console.log("current bill", currentPrintBill);
-              }}
+              onClick={handlePrintLR}
+              disabled={lrPdfLoading || !lrPdfUrl}
             >
-              Print LR
+              {lrPdfLoading ? "Preparing LR..." : "Print LR"}
             </Button>
           )}
           <Button onClick={handleSuccessDailogClose} autoFocus>
             Cancel
           </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog
-        open={printLrDialogOpen}
-        onClose={() => setPrintLrDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>Print LR</DialogTitle>
-        <DialogContent>
-          {/* PDF Preview Component */}
-          {printLrDialogOpen && (
-            <PDFViewer style={{ width: "100%", height: "80vh" }}>
-              <BillPdfDocument bill={createBillResponse} />
-            </PDFViewer>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPrintLrDialogOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </>
