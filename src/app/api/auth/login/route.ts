@@ -5,11 +5,13 @@ import { connectToDatabase } from "../../../../../lib/mongodb";
 import { User,IUser } from "../../../../../models/User";
 import { signToken } from "../../../../../lib/jwt";
 
+const REMEMBER_ME_MAX_AGE = 60 * 60 * 24 * 30;
+
 export async function POST(req: Request) {
   try {
     await connectToDatabase();
 
-    const { loginId, password } = await req.json();
+    const { loginId, password, rememberMe } = await req.json();
 
     if (!loginId || !password) {
       return NextResponse.json(
@@ -65,8 +67,10 @@ export async function POST(req: Request) {
     // 🍪 cookie used by middleware
     res.cookies.set("token", token, {
       httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
+      ...(rememberMe ? { maxAge: REMEMBER_ME_MAX_AGE } : {}),
     });
 
     return res;

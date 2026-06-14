@@ -1,16 +1,26 @@
 "use client";
 
-import React, { use, useEffect, useRef, useState,useMemo } from "react";
+import React, { use, useEffect, useRef, useState, useMemo } from "react";
 // Custom cell renderer for Delivery status
 const DeliveryStatusRenderer = (props) => {
   const value = props.value;
   if (value === true) {
     return (
-      <span style={{ color: 'green', fontWeight: 'bold', fontSize: '1.2em' }} title="Delivered">✓</span>
+      <span
+        style={{ color: "green", fontWeight: "bold", fontSize: "1.2em" }}
+        title="Delivered"
+      >
+        ✓
+      </span>
     );
   } else {
     return (
-      <span style={{ color: 'red', fontWeight: 'bold', fontSize: '1.2em' }} title="Not Delivered">✗</span>
+      <span
+        style={{ color: "red", fontWeight: "bold", fontSize: "1.2em" }}
+        title="Not Delivered"
+      >
+        ✗
+      </span>
     );
   }
 };
@@ -27,7 +37,11 @@ const UNDELIVERED_STATUSES = [
 ];
 
 import { AgGridReact } from "ag-grid-react";
-import { _isRowSelection, AllCommunityModule, ModuleRegistry } from "ag-grid-community";
+import {
+  _isRowSelection,
+  AllCommunityModule,
+  ModuleRegistry,
+} from "ag-grid-community";
 import "./styles/dataGridStyles.css";
 import useBillsStore from "../../../store/billsStore"; // Zustand Store
 
@@ -37,10 +51,7 @@ import { useAuthStore } from "../../../store/useAuthStore";
 import { FaDownload } from "react-icons/fa";
 import { IoPrint } from "react-icons/io5";
 
-
-
 import { useRouter } from "next/navigation";
-
 
 import {
   Table,
@@ -51,43 +62,45 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 
-import "./styles/animations.css"
+import "./styles/animations.css";
 import { G } from "@react-pdf/renderer";
 import Link from "next/link";
-import Lottie from "lottie-react"
-import loadingAnimationData from "../../../../public/assets/animations/aonjiLoading.json"
+import Lottie from "lottie-react";
+import loadingAnimationData from "../../../../public/assets/animations/aonjiLoading.json";
 
-import { saveAs } from 'file-saver';
-import { pdf } from '@react-pdf/renderer';
+import { saveAs } from "file-saver";
+import { pdf } from "@react-pdf/renderer";
 
-import {useReactToPrint } from "react-to-print"
-import html2canvas  from "html2canvas"
-import jsPDF from 'jspdf'
+import { useReactToPrint } from "react-to-print";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import { useBreakpoint } from "./hooks/useBreakPoint";
 
-import logo from "../../../../public/ANJITLOGOBLACK.svg"
-import succesTickLottie from "../../../../public/assets/animations/success_tick_lottie.json"
-import Image from 'next/image'
+import logo from "../../../../public/ANJITLOGOBLACK.svg";
+import succesTickLottie from "../../../../public/assets/animations/success_tick_lottie.json";
+import Image from "next/image";
 
-import { Dialog, DialogActions, DialogContent, DialogTitle, Select, TextField,DialogContentText } from "@mui/material";
-import Box from '@mui/material/Box';
-import CircularProgress from '@mui/material/CircularProgress';
-import MenuItem from '@mui/material/MenuItem';
-import  { InputLabel } from "@mui/material";
-import  FormControl from "@mui/material/FormControl";
-import Button from  "@mui/material/Button";
-import Tabs from '@mui/material/Tabs';
-import Tab from '@mui/material/Tab';
+import {
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Select,
+  TextField,
+  DialogContentText,
+} from "@mui/material";
+import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
+import MenuItem from "@mui/material/MenuItem";
+import { InputLabel } from "@mui/material";
+import FormControl from "@mui/material/FormControl";
+import Button from "@mui/material/Button";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
 import { set } from "mongoose";
 import { isError } from "postcss/lib/css-syntax-error";
-
-
-
-
-
-
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -102,41 +115,34 @@ function getYearsFromYearToCurrent(startYear) {
   return years;
 }
 
-
-
 const DataGrid = () => {
-  const router = useRouter()
+  const router = useRouter();
   const { isMobile } = useBreakpoint();
 
-  const pdfComonentRef = useRef(null)
+  const pdfComonentRef = useRef(null);
 
-
-    const user = useAuthStore((state) => state.user);
-    const fetchMe = useAuthStore((state) => state.fetchMe);
-    const hasHydrated = useAuthStore((state) => state.hasHydrated);
-    useEffect(() => {
+  const user = useAuthStore((state) => state.user);
+  const fetchMe = useAuthStore((state) => state.fetchMe);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
+  useEffect(() => {
     if (hasHydrated && !user) {
       fetchMe();
     }
-    }, [hasHydrated, user, fetchMe]);
-  
-    const fromBranch = user?.branchId;
+  }, [hasHydrated, user, fetchMe]);
 
-    const TAB_DIRECTION_MAP = {
-  0: "ALL",
-  1: "OUTGOING",
-  2: "INCOMING",
-};
+  const fromBranch = user?.branchId;
 
-    
-  
-    
+  const TAB_DIRECTION_MAP = {
+    0: "ALL",
+    1: "OUTGOING",
+    2: "INCOMING",
+  };
 
-   const handlePrintPdf = useReactToPrint({
-      contentRef:pdfComonentRef, 
-      documentTitle: "A4_Print_Document",
-      removeAfterPrint: true, 
-      pageStyle: `
+  const handlePrintPdf = useReactToPrint({
+    contentRef: pdfComonentRef,
+    documentTitle: "A4_Print_Document",
+    removeAfterPrint: true,
+    pageStyle: `
          @page {
       size: A4;
       margin: 0;
@@ -153,95 +159,89 @@ const DataGrid = () => {
       }
     }
       `,
-    });
+  });
 
-    const handlePrintPdfHtml2Canvas = async () => {
-      const element = document.getElementById("pdfContent"); // Capture this div
-      if (!element) {
-        console.error("No element found to print");
-        return;
-      }
-    
-      // Store original styles to revert later
-      const originalWidth = element.style.width;
-      const originalHeight = element.style.height;
-    
-      // ✅ Apply A4 size dynamically only during capture
-      element.style.width = "794px";
-      element.style.height = "auto"; // Allow dynamic height
-    
-      await new Promise((resolve) => setTimeout(resolve, 200)); // Allow DOM to update
-    
-      // Capture the element as an image
-      const canvas = await html2canvas(element, { scale: 2 }); // High resolution
-      const imgData = canvas.toDataURL("image/png");
-    
-      // Revert to original size
-      element.style.width = originalWidth;
-      element.style.height = originalHeight;
-    
-      // Create a new PDF
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-    
-      // Convert the captured image dimensions to mm
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-    
-      let yPosition = 0; // Start position for adding images
-    
-      while (yPosition < imgHeight) {
-        pdf.addImage(imgData, "PNG", 0, -yPosition, imgWidth, imgHeight);
-        yPosition += pdfHeight; // Move to next page height
-        if (yPosition < imgHeight) {
-          pdf.addPage(); // Add a new page if content is still left
-        }
-      }
-    
-      pdf.save("A4_Print_Document.pdf");
-    };
-    
+  const handlePrintPdfHtml2Canvas = async () => {
+    const element = document.getElementById("pdfContent"); // Capture this div
+    if (!element) {
+      console.error("No element found to print");
+      return;
+    }
 
+    // Store original styles to revert later
+    const originalWidth = element.style.width;
+    const originalHeight = element.style.height;
+
+    // ✅ Apply A4 size dynamically only during capture
+    element.style.width = "794px";
+    element.style.height = "auto"; // Allow dynamic height
+
+    await new Promise((resolve) => setTimeout(resolve, 200)); // Allow DOM to update
+
+    // Capture the element as an image
+    const canvas = await html2canvas(element, { scale: 2 }); // High resolution
+    const imgData = canvas.toDataURL("image/png");
+
+    // Revert to original size
+    element.style.width = originalWidth;
+    element.style.height = originalHeight;
+
+    // Create a new PDF
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+
+    // Convert the captured image dimensions to mm
+    const imgWidth = pdfWidth;
+    const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    let yPosition = 0; // Start position for adding images
+
+    while (yPosition < imgHeight) {
+      pdf.addImage(imgData, "PNG", 0, -yPosition, imgWidth, imgHeight);
+      yPosition += pdfHeight; // Move to next page height
+      if (yPosition < imgHeight) {
+        pdf.addPage(); // Add a new page if content is still left
+      }
+    }
+
+    pdf.save("A4_Print_Document.pdf");
+  };
 
   const allBranches = useBranchStore((state) => state.branches);
-  const BranchesEcludingUserBranch = useBranchStore((state) => state.branchesExcludeUserBranch);
-  const [serviceAreasEcludingUserBranch, setServiceAreasEcludingUserBranch] = useState([]);
+  const BranchesEcludingUserBranch = useBranchStore(
+    (state) => state.branchesExcludeUserBranch,
+  );
+  const [serviceAreasEcludingUserBranch, setServiceAreasEcludingUserBranch] =
+    useState([]);
   const [selectedBranch, setSelectedBranch] = useState(null);
-    
 
+  const [filterByAreaCheckedState, setFilterByAreaCheckedState] =
+    useState(false);
+  const [openTripSuccessDialog, setOpenTripSuccessDialog] = useState(false);
 
-   
-    const [filterByAreaCheckedState, setFilterByAreaCheckedState] = useState(false);
-    const [openTripSuccessDialog ,setOpenTripSuccessDialog]=useState(false)
-  
   // over all bills, current bills state
   const { bills, fetchBills, updateBill } = useBillsStore();
   //fileter bills by month, year, city
-  const[filteredBills, setFilteredBills] = useState([])
-
+  const [filteredBills, setFilteredBills] = useState([]);
 
   // bills that are about to deliver which are got from trip. uses tripIds state to set this state
-  const [deliveryBillsList,setdeliveryBillsList]=useState([])
+  const [deliveryBillsList, setdeliveryBillsList] = useState([]);
   // unpaid bills of the deliveryBillsList state. to get total amount and total charge we use.
-  const [unpaidBillsList,setUnpaidBillsList]=useState([])
-
-
+  const [unpaidBillsList, setUnpaidBillsList] = useState([]);
 
   const [loading, setLoading] = useState(true);
 
-  
-
   //trip store
-  const { createTrip,tripCreateStatus } = useTripsStore();
-  
+  const { createTrip, tripCreateStatus } = useTripsStore();
+
   const [openPdfModal, setOpenPdfModal] = useState(false);
   const [openChargeseModal, setOpenChargesModal] = useState(false);
-  const [PDFBillListPageData,setPDFBillListPageData] = useState(null)
+  const [PDFBillListPageData, setPDFBillListPageData] = useState(null);
   // bills ids are selected to set the trip
-  const [tripIds,setTripIds]=useState([])
+  const [tripIds, setTripIds] = useState([]);
 
-  const [printBillsFlag,setPrintBillsFlag]=useState(false)
+  const [printBillsFlag, setPrintBillsFlag] = useState(false);
 
   //bills request body to get bills data from backend according to year, month, city.
   const [billsReqBody, setBillsReqBody] = useState({
@@ -249,9 +249,9 @@ const DataGrid = () => {
     year: "",
     to: "",
     fromBranch: "",
-    toBranch: "", 
+    toBranch: "",
     direction: "OUTGOING", // "OUTGOING" | "INCOMING" | "ALL"
-    status:  UNDELIVERED_STATUSES // default exclude delivered bills
+    status: UNDELIVERED_STATUSES, // default exclude delivered bills
   });
 
   useEffect(() => {
@@ -262,79 +262,73 @@ const DataGrid = () => {
       }));
     }
   }, [user]);
-  
 
- const fetchFilteredBills = async (filters) => {
-  const cleanedFilters = { ...filters };
+  const fetchFilteredBills = async (filters) => {
+    const cleanedFilters = { ...filters };
 
-  if (cleanedFilters.direction === "INCOMING") {
-    delete cleanedFilters.fromBranch;
-  }
+    if (cleanedFilters.direction === "INCOMING") {
+      delete cleanedFilters.fromBranch;
+    }
 
-  // ❌ REMOVE THIS BLOCK
-  // if (cleanedFilters.direction === "OUTGOING") {
-  //   delete cleanedFilters.toBranch;
-  // }
+    // ❌ REMOVE THIS BLOCK
+    // if (cleanedFilters.direction === "OUTGOING") {
+    //   delete cleanedFilters.toBranch;
+    // }
 
-  const params = new URLSearchParams(
-    Object.entries(cleanedFilters).filter(([_, v]) => v !== "" && v !== null)
-  );
+    const params = new URLSearchParams(
+      Object.entries(cleanedFilters).filter(([_, v]) => v !== "" && v !== null),
+    );
 
-  console.log("API PARAMS:", params.toString()); // 👈 DEBUG
+    console.log("API PARAMS:", params.toString()); // 👈 DEBUG
 
-  const res = await fetch(`/api/bills?${params.toString()}`);
-  const data = await res.json();
-  setFilteredBills(data);
-};
-
-
-// Call fetchFilteredBills({ year, month, to }) when filters change
-useEffect(() => {
-  fetchFilteredBills(billsReqBody);
-  console.log("Filters changed, fetching bills with:", billsReqBody); 
-  console.log("Current bills state:", bills);
-  console.log("Current filtered bills state:", filteredBills);
-}, [
-  billsReqBody.month,
-  billsReqBody.year,
-  billsReqBody.to,
-  billsReqBody.fromBranch,
-  billsReqBody.toBranch,
-  billsReqBody.direction,
-  billsReqBody.status,
-]);
-
-
-
-  
-
-
-  const [agencyCommissionCharges,setAgencyCommissionCharges]=useState({chargeAmount:0,chargeRate:10,addedFlag:false,})
- 
-
- 
-  const [Charges,setCharges]=useState({ totalArticels:0,totalAmount:0,agencyCharges:agencyCommissionCharges,grandTotalChargeAmount:0,netPayableAmount:0,totalUnpaidAmount:0,driverName:"",vehicleNumber:"" })
-  
-
-
-  
-
-
-
-
-
- 
-  
-  
-
-  const handleOnChangeAgencyCommisionCharges = (name, value) => {
-    setAgencyCommissionCharges((prevState) => ({ ...prevState, [name]: value }));
+    const res = await fetch(`/api/bills?${params.toString()}`);
+    const data = await res.json();
+    setFilteredBills(data);
   };
 
-  const handleOnChangeChargesInput =(name,value)=>{
+  // Call fetchFilteredBills({ year, month, to }) when filters change
+  useEffect(() => {
+    fetchFilteredBills(billsReqBody);
+    console.log("Filters changed, fetching bills with:", billsReqBody);
+    console.log("Current bills state:", bills);
+    console.log("Current filtered bills state:", filteredBills);
+  }, [
+    billsReqBody.month,
+    billsReqBody.year,
+    billsReqBody.to,
+    billsReqBody.fromBranch,
+    billsReqBody.toBranch,
+    billsReqBody.direction,
+    billsReqBody.status,
+  ]);
+
+  const [agencyCommissionCharges, setAgencyCommissionCharges] = useState({
+    chargeAmount: 0,
+    chargeRate: 10,
+    addedFlag: false,
+  });
+
+  const [Charges, setCharges] = useState({
+    totalArticels: 0,
+    totalAmount: 0,
+    agencyCharges: agencyCommissionCharges,
+    grandTotalChargeAmount: 0,
+    netPayableAmount: 0,
+    totalUnpaidAmount: 0,
+    driverName: "",
+    vehicleNumber: "",
+  });
+
+  const handleOnChangeAgencyCommisionCharges = (name, value) => {
+    setAgencyCommissionCharges((prevState) => ({
+      ...prevState,
+      [name]: value,
+    }));
+  };
+
+  const handleOnChangeChargesInput = (name, value) => {
     setCharges((prevState) => ({ ...prevState, [name]: value }));
-  }
- 
+  };
 
   const months = [
     "january",
@@ -351,250 +345,232 @@ useEffect(() => {
     "december",
   ];
 
-  
+  const fetchAllBranches = useBranchStore((state) => state.fetchBranches);
+  const fetchBranchesEcludeUserBranch = useBranchStore(
+    (state) => state.fetchBranchesEcludeUserBranch,
+  );
 
-  
-  
-  
-  const fetchAllBranches = useBranchStore((state)=>state.fetchBranches)
-  const fetchBranchesEcludeUserBranch = useBranchStore((state)=>state.fetchBranchesEcludeUserBranch)
-  
-  
   const [years, setYears] = useState([]);
 
+  // tabs default value is set according to user role. if super admin -> all, else outgoing because other two tabs are not relevant for non super admin users.
+  const [tabsValue, setTabsValue] = useState(
+    user?.role === "super_admin" ? 0 : 1,
+  );
 
-
-   // tabs default value is set according to user role. if super admin -> all, else outgoing because other two tabs are not relevant for non super admin users.
-   const [tabsValue, setTabsValue] = useState(user?.role==="super_admin"? 0 : 1);
-   
-  
-  
-  
-  
   const dateObj = new Date();
-  
+
   const [areas, setAreas] = useState([]);
 
-    const[tripData,setTripData]=useState({})
+  const [tripData, setTripData] = useState({});
 
-    const[createdTripId,setCreatedTripId]=useState(null)
-   
+  const [createdTripId, setCreatedTripId] = useState(null);
 
   useEffect(() => {
-  setTripData({
-    driver: Charges.driverName,
-    vehicleNumber: Charges.vehicleNumber,
-    agencyCharges: {
-      chargeAmount: Charges.agencyCharges.chargeAmount,
-      chargeRate: Charges.agencyCharges.chargeRate,
-    },
-  
-    totalAmount: Charges.totalAmount,
-    totalArticels: Charges.totalArticels,
-    totalUnpaidAmount: Charges.totalUnpaidAmount,
- 
-    bills: tripIds, // <-- will now update
-   
-    
-    grandTotalChargeAmount: Charges.grandTotalChargeAmount,
-    netPayableAmount  : Charges.netPayableAmount,
+    setTripData({
+      driver: Charges.driverName,
+      vehicleNumber: Charges.vehicleNumber,
+      agencyCharges: {
+        chargeAmount: Charges.agencyCharges.chargeAmount,
+        chargeRate: Charges.agencyCharges.chargeRate,
+      },
 
-    originBranch: billsReqBody.fromBranch ,
-    destinationBranch :selectedBranch?._id || "N/A",
-  });
-}, [
-  Charges,
-  selectedBranch,
-  tripIds,
- 
-]);
+      totalAmount: Charges.totalAmount,
+      totalArticels: Charges.totalArticels,
+      totalUnpaidAmount: Charges.totalUnpaidAmount,
 
+      bills: tripIds, // <-- will now update
 
- 
+      grandTotalChargeAmount: Charges.grandTotalChargeAmount,
+      netPayableAmount: Charges.netPayableAmount,
+
+      originBranch: billsReqBody.fromBranch,
+      destinationBranch: selectedBranch?._id || "N/A",
+    });
+  }, [Charges, selectedBranch, tripIds]);
+
   useEffect(() => {
-  fetchAllBranches(); // just trigger fetch on mount
+    fetchAllBranches(); // just trigger fetch on mount
   }, [fetchAllBranches]);
 
   useEffect(() => {
     fetchBranchesEcludeUserBranch(); // just trigger fetch on mount
   }, [fetchBranchesEcludeUserBranch]);
 
- 
-
-
   const gridRef = useRef(null);
 
-  
   useEffect(() => {
     fetchBills().then(() => setLoading(false));
-  }, [fetchBills, user?.branchId,]);
+  }, [fetchBills, user?.branchId]);
 
-   useEffect(() => {
-     async function loadAreas() {
-       const res = await fetch("/api/branches/exclude-user-service-areas");
-       const data = await res.json();
-       setServiceAreasEcludingUserBranch(data.areas || []);
-       console.log("Service areas loaded:", data.areas);
-     }
-   
-     loadAreas();
-   }, []);
-    
-
- 
-
-
-// Utility: normalize area strings for comparisons
-const normalize = (s) => (typeof s === "string" ? s.trim().toLowerCase() : "");
-
- 
-
-  
-  // 2) Derive filteredAgencies when area selection or agencies change
- 
-
-    
-
-//3) If user changes area, and currently selected agency doesn't serve it -> reset agencyName
-    //  (keeps consistency so two-way filter doesn't conflict)
-
-
-
-
-// all the calculations related to bills, charges, commission, net payable amount etc are done in this useEffect which runs when deliveryBillsList or agencyCommissionCharges.chargeRate changes. deliveryBillsList is the list of bills that are selected to be added in the trip and are about to deliver. so whenever user adds or removes a bill from the deliveryBillsList this useEffect runs and calculates all the amounts according to the current deliveryBillsList and the current commission charge rate.
-useEffect(() => {
-  if (!deliveryBillsList) return;
-
-  // 1️⃣ Filter unpaid bills
-  const unpaidBills = deliveryBillsList.filter(bill => bill.paymentStatus === false);
-  setUnpaidBillsList(unpaidBills);
-
-  // 2️⃣ Total Articles (from all bills)
-  const totalArticles = deliveryBillsList.reduce(
-    (sum, bill) => sum + (bill.totalNumOfParcels || 0),
-    0
-  );
-
-  // 3️⃣ Total Amount (from all bills)
-  const totalAmount = deliveryBillsList.reduce(
-    (sum, bill) => sum + (bill.totalAmount || 0),
-    0
-  );
-
-  // 4️⃣ Total Unpaid Amount (only from unpaid bills)
-  const totalUnpaidAmount = unpaidBills.reduce(
-    (sum, bill) => sum + (bill.totalAmount || 0),
-    0
-  );
-
-  // 5️⃣ Agency Commission (only on unpaid bills)
-  const commissionChargeAmount = (totalAmount * agencyCommissionCharges.chargeRate) / 100;
-
-  // 6️⃣ Net Payable Amount (remaining amount agency needs to pay)
-  const netPayableAmount = totalUnpaidAmount - commissionChargeAmount;
-
-  // 7️⃣ Update both states cleanly
-  setAgencyCommissionCharges(prev => ({
-    ...prev,
-    chargeAmount: commissionChargeAmount,
-  }));
-
-  setCharges(prev => ({
-    ...prev,
-    totalArticels: totalArticles,
-    totalAmount,
-    totalUnpaidAmount,
-    netPayableAmount,
-    agencyCharges: {
-      ...prev.agencyCharges,
-      chargeAmount: commissionChargeAmount,
-    },
-  }));
-
-  console.log("✅ Total unpaid:", totalUnpaidAmount);
-  console.log("✅ Commission:", commissionChargeAmount);
-  console.log("✅ Net payable:", netPayableAmount);
-}, [
-  deliveryBillsList,
-  agencyCommissionCharges.chargeRate,
-]);
-
-    
-
-
-
-  const agencyCommissionChargesTableColumns =[
-    {
-      id:"totalAmount",
-      label:"Total Amount"
-    },
-    {
-      id:"chargeRate",
-      label:"Charge Rate"
-    },
-    {
-      id:"chargeAmount",
-      label:"Charge Amount"
+  useEffect(() => {
+    async function loadAreas() {
+      const res = await fetch("/api/branches/exclude-user-service-areas");
+      const data = await res.json();
+      setServiceAreasEcludingUserBranch(data.areas || []);
+      console.log("Service areas loaded:", data.areas);
     }
-  ]
-  
-    const DeliveryStatusRenderer = (props) => {
-  const value = props.value;
-  if (value === true) {
-    return (
-      <span style={{ color: 'green', fontWeight: 'bold', fontSize: '1.2em' }} title="Delivered">✓</span>
+
+    loadAreas();
+  }, []);
+
+  // Utility: normalize area strings for comparisons
+  const normalize = (s) =>
+    typeof s === "string" ? s.trim().toLowerCase() : "";
+
+  // 2) Derive filteredAgencies when area selection or agencies change
+
+  //3) If user changes area, and currently selected agency doesn't serve it -> reset agencyName
+  //  (keeps consistency so two-way filter doesn't conflict)
+
+  // all the calculations related to bills, charges, commission, net payable amount etc are done in this useEffect which runs when deliveryBillsList or agencyCommissionCharges.chargeRate changes. deliveryBillsList is the list of bills that are selected to be added in the trip and are about to deliver. so whenever user adds or removes a bill from the deliveryBillsList this useEffect runs and calculates all the amounts according to the current deliveryBillsList and the current commission charge rate.
+  useEffect(() => {
+    if (!deliveryBillsList) return;
+
+    // 1️⃣ Filter unpaid bills
+    const unpaidBills = deliveryBillsList.filter(
+      (bill) => bill.paymentStatus === false,
     );
-  } else {
-    return (
-      <span style={{ color: 'red', fontWeight: 'bold', fontSize: '1.2em' }} title="Not Delivered">✗</span>
+    setUnpaidBillsList(unpaidBills);
+
+    // 2️⃣ Total Articles (from all bills)
+    const totalArticles = deliveryBillsList.reduce(
+      (sum, bill) => sum + (bill.totalNumOfParcels || 0),
+      0,
     );
-  }
-};
 
-// filteredBills = bills after your filters (fetched/derived elsewhere)
-const displayRows = useMemo(() => {
-  const idSet = new Set(tripIds);
-  return (filteredBills || [])?.map(bill => ({
-    ...bill,
-    // tick the flag if this bill's _id is in tripIds
-    
-  }));
-}, [filteredBills, tripIds]);
+    // 3️⃣ Total Amount (from all bills)
+    const totalAmount = deliveryBillsList.reduce(
+      (sum, bill) => sum + (bill.totalAmount || 0),
+      0,
+    );
 
-useEffect(() => {
-  // Guard clause
-  if (!filteredBills || !deliveryBillsList) return;
+    // 4️⃣ Total Unpaid Amount (only from unpaid bills)
+    const totalUnpaidAmount = unpaidBills.reduce(
+      (sum, bill) => sum + (bill.totalAmount || 0),
+      0,
+    );
 
-  // ✅ Map only once per dependency change
-  const billsWithTripFlags = filteredBills?.map(bill => ({
-    ...bill,
-   
-  }));
+    // 5️⃣ Agency Commission (only on unpaid bills)
+    const commissionChargeAmount =
+      (totalAmount * agencyCommissionCharges.chargeRate) / 100;
 
-  // Only update if data actually changed
-  const isSame =
-    JSON.stringify(filteredBills) === JSON.stringify(billsWithTripFlags);
-  if (!isSame) {
-    setFilteredBills(billsWithTripFlags);
-  }
+    // 6️⃣ Net Payable Amount (remaining amount agency needs to pay)
+    const netPayableAmount = totalUnpaidAmount - commissionChargeAmount;
 
-  // ✅ Safe refresh (only if grid is mounted)
-  if (gridRef.current?.api) {
-    gridRef.current.api.refreshCells({ force: true });
-  }
-}, [deliveryBillsList]);
+    // 7️⃣ Update both states cleanly
+    setAgencyCommissionCharges((prev) => ({
+      ...prev,
+      chargeAmount: commissionChargeAmount,
+    }));
 
-  
+    setCharges((prev) => ({
+      ...prev,
+      totalArticels: totalArticles,
+      totalAmount,
+      totalUnpaidAmount,
+      netPayableAmount,
+      agencyCharges: {
+        ...prev.agencyCharges,
+        chargeAmount: commissionChargeAmount,
+      },
+    }));
+
+    console.log("✅ Total unpaid:", totalUnpaidAmount);
+    console.log("✅ Commission:", commissionChargeAmount);
+    console.log("✅ Net payable:", netPayableAmount);
+  }, [deliveryBillsList, agencyCommissionCharges.chargeRate]);
+
+  const agencyCommissionChargesTableColumns = [
+    {
+      id: "totalAmount",
+      label: "Total Amount",
+    },
+    {
+      id: "chargeRate",
+      label: "Charge Rate",
+    },
+    {
+      id: "chargeAmount",
+      label: "Charge Amount",
+    },
+  ];
+
+  const DeliveryStatusRenderer = (props) => {
+    const value = props.value;
+    if (value === true) {
+      return (
+        <span
+          style={{ color: "green", fontWeight: "bold", fontSize: "1.2em" }}
+          title="Delivered"
+        >
+          ✓
+        </span>
+      );
+    } else {
+      return (
+        <span
+          style={{ color: "red", fontWeight: "bold", fontSize: "1.2em" }}
+          title="Not Delivered"
+        >
+          ✗
+        </span>
+      );
+    }
+  };
+
+  // filteredBills = bills after your filters (fetched/derived elsewhere)
+  const displayRows = useMemo(() => {
+    const idSet = new Set(tripIds);
+    return (filteredBills || [])?.map((bill) => ({
+      ...bill,
+      // tick the flag if this bill's _id is in tripIds
+    }));
+  }, [filteredBills, tripIds]);
+
+  useEffect(() => {
+    // Guard clause
+    if (!filteredBills || !deliveryBillsList) return;
+
+    // ✅ Map only once per dependency change
+    const billsWithTripFlags = filteredBills?.map((bill) => ({
+      ...bill,
+    }));
+
+    // Only update if data actually changed
+    const isSame =
+      JSON.stringify(filteredBills) === JSON.stringify(billsWithTripFlags);
+    if (!isSame) {
+      setFilteredBills(billsWithTripFlags);
+    }
+
+    // ✅ Safe refresh (only if grid is mounted)
+    if (gridRef.current?.api) {
+      gridRef.current.api.refreshCells({ force: true });
+    }
+  }, [deliveryBillsList]);
 
   const colDefs = [
-    { headerName: "S.No.", field: "sno", width: 90, minWidth: 90, valueGetter: (params) => params.node.rowIndex + 1 },
-    { headerName: "INV No.", field: "lrNumber", width: 120, minWidth: 120, maxWidth:120 , sortable: true, filter: true },
+    {
+      headerName: "S.No.",
+      field: "sno",
+      width: 90,
+      minWidth: 90,
+      valueGetter: (params) => params.node.rowIndex + 1,
+    },
+    {
+      headerName: "INV No.",
+      field: "lrNumber",
+      width: 120,
+      minWidth: 120,
+      maxWidth: 120,
+      sortable: true,
+      filter: true,
+    },
     { headerName: "Date", field: "date", width: 110, minWidth: 110 },
     {
       headerName: "To",
       field: "to",
-      
-     
+
       width: 150,
       minWidth: 150,
     },
@@ -603,7 +579,6 @@ useEffect(() => {
       field: "fromBranch.name",
       width: 200,
       minWidth: 200,
-      
     },
     {
       headerName: "To Branch",
@@ -637,7 +612,6 @@ useEffect(() => {
       minWidth: 80,
     },
 
-    
     {
       headerName: "Amount",
       field: "totalAmount",
@@ -648,105 +622,103 @@ useEffect(() => {
         "footer-bold": (params) => params.node.rowPinned === "bottom",
       },
     },
-   {
-  headerName: "Payment",
-  field: "paymentStatus",
-  width: 100,
-  cellRenderer: (params) => {
-    return params.value ? "Paid" : "Unpaid";
-  }
-},
     {
-  headerName: "Status",
-  field: "status",
-  width: 160,
-  minWidth: 160,
-  cellRenderer: (params) => {
-    const status = params.value;
+      headerName: "Payment",
+      field: "paymentStatus",
+      width: 100,
+      cellRenderer: (params) => {
+        return params.value ? "Paid" : "Unpaid";
+      },
+    },
+    {
+      headerName: "Status",
+      field: "status",
+      width: 160,
+      minWidth: 160,
+      cellRenderer: (params) => {
+        const status = params.value;
 
-    const colors = {
-      CREATED: "#999",
-      IN_WAREHOUSE: "#6c757d",
-      ADDED_TO_TRIP: "#007bff",
-      IN_TRANSIT: "#f0ad4e",
-      ARRIVED_AT_BRANCH: "#5bc0de",
-      OUT_FOR_DELIVERY: "#ff9800",
-      DELIVERED: "#28a745",
-      POD_RECEIVED: "#20c997",
-    };
+        const colors = {
+          CREATED: "#999",
+          IN_WAREHOUSE: "#6c757d",
+          ADDED_TO_TRIP: "#007bff",
+          IN_TRANSIT: "#f0ad4e",
+          ARRIVED_AT_BRANCH: "#5bc0de",
+          OUT_FOR_DELIVERY: "#ff9800",
+          DELIVERED: "#28a745",
+          POD_RECEIVED: "#20c997",
+        };
 
-    return (
-      <span
-        style={{
-          padding: "4px 8px",
-          borderRadius: "6px",
-          background: colors[status] || "#ccc",
-          color: "white",
-          fontSize: "12px",
-          fontWeight: "500",
-        }}
-      >
-        {status}
-      </span>
-    );
-  },
-},
+        return (
+          <span
+            style={{
+              padding: "4px 8px",
+              borderRadius: "6px",
+              background: colors[status] || "#ccc",
+              color: "white",
+              fontSize: "12px",
+              fontWeight: "500",
+            }}
+          >
+            {status}
+          </span>
+        );
+      },
+    },
 
-    
-    
-   {
-  headerName: "Add To Trip",
-  field: "_id",
-  minWidth: 140,
+    {
+      headerName: "Add To Trip",
+      field: "_id",
+      minWidth: 140,
 
-  cellRenderer: (params) => {
-    const bill = params.data;
-    const _id = bill._id;
+      cellRenderer: (params) => {
+        const bill = params.data;
+        const _id = bill._id;
 
-    const isSelected = tripIds.includes(_id);
+        const isSelected = tripIds.includes(_id);
 
-    const isDisabled =
-      user?.role === "super_admin" ||
-      billsReqBody.direction === "INCOMING" ||
-      !["CREATED", "IN_WAREHOUSE"].includes(bill.status);
+        const isDisabled =
+          user?.role === "super_admin" ||
+          billsReqBody.direction === "INCOMING" ||
+          !["CREATED", "IN_WAREHOUSE"].includes(bill.status);
 
-    return (
-      <button
-        disabled={isDisabled}
-        className={`px-2 py-1 rounded ${
-          isDisabled
-            ? "bg-gray-300 cursor-not-allowed"
-            : isSelected
-            ? "bg-red-500 text-white"
-            : "bg-blue-600 text-white"
-        }`}
-        onClick={() => {
-          if (selectedBranch == null) {
-            alert("Please select a branch first.");
-            return;
-          }
+        return (
+          <button
+            disabled={isDisabled}
+            className={`px-2 py-1 rounded ${
+              isDisabled
+                ? "bg-gray-300 cursor-not-allowed"
+                : isSelected
+                  ? "bg-red-500 text-white"
+                  : "bg-blue-600 text-white"
+            }`}
+            onClick={() => {
+              if (selectedBranch == null) {
+                alert("Please select a branch first.");
+                return;
+              }
 
-          if (isSelected) {
-            // ❌ REMOVE (LOCAL ONLY)
-            setTripIds((prev) => prev.filter((id) => id !== _id));
-            setdeliveryBillsList((prev) =>
-              prev.filter((b) => b._id !== _id)
-            );
-          } else {
-            // ✅ ADD (LOCAL ONLY)
-            setTripIds((prev) => [...prev, _id]);
-            setdeliveryBillsList((prev) => [...prev, bill]);
-          }
+              if (isSelected) {
+                // ❌ REMOVE (LOCAL ONLY)
+                setTripIds((prev) => prev.filter((id) => id !== _id));
+                setdeliveryBillsList((prev) =>
+                  prev.filter((b) => b._id !== _id),
+                );
+              } else {
+                // ✅ ADD (LOCAL ONLY)
+                setTripIds((prev) => [...prev, _id]);
+                setdeliveryBillsList((prev) => [...prev, bill]);
+              }
 
-          gridRef.current?.api?.refreshCells({ force: true });
-        }}
-      >
-        {isSelected ? "Remove" : "Add"}
-      </button>
-    );
-  },
-},
-{
+              gridRef.current?.api?.refreshCells({ force: true });
+            }}
+          >
+            {isSelected ? "Remove" : "Add"}
+          </button>
+        );
+      },
+    },
+    {
       headerName: "View Bill",
       field: "id", // You can use the "id" field for navigation
       cellRenderer: (params) => {
@@ -765,165 +737,162 @@ useEffect(() => {
   ];
 
   const CustomNoRowsOverlay = () => {
-  return (
-    <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
-      <h3>No bills found</h3>
-      <p>Try adjusting your filters or add a new bill.</p>
-    </div>
-  );
-};
-  
+    return (
+      <div style={{ padding: "20px", textAlign: "center", color: "#999" }}>
+        <h3>No bills found</h3>
+        <p>Try adjusting your filters or add a new bill.</p>
+      </div>
+    );
+  };
 
   // sends bills ids to backend(backend changes the bills deliveryStatus to true) and then refetch the current bills to render the changes.
- const handleSetTrip = async () => {
-  console.log("delivery list", deliveryBillsList, "trip bills ids", tripIds, "tripData", tripData);
-  setOpenChargesModal(!openChargeseModal);
+  const handleSetTrip = async () => {
+    console.log(
+      "delivery list",
+      deliveryBillsList,
+      "trip bills ids",
+      tripIds,
+      "tripData",
+      tripData,
+    );
 
-  
-};
-
-
-
-const refreshBillsData = async () => {
-  try {
-    await fetchFilteredBills(billsReqBody); // reload filtered bills
-    
-    setTripIds([]);
-    setdeliveryBillsList([]);
-
-    // ✅ ONLY reset driver + vehicle
-    setTripData((prev) => ({
-      ...prev,
-      driver: "",
-      vehicleNumber: "",
-    }));
-
-    
-
-    
-    
-    
-
-    if (gridRef.current?.api) {
-      gridRef.current.api.refreshCells({ force: true });
-    }
-
-    console.log("Bills refreshed successfully");
-  } catch (err) {
-    console.error("Failed to refresh bills:", err);
-  }
-};
-
-  const handlePostTrip = async () => {    
-    try {
-
-    console.log("Trip data being sent:", tripData);
-    const result = await createTrip(tripData); // 👈 await here
-    
-    setCreatedTripId(result?._id || null)
-      
-    setOpenTripSuccessDialog(true)
-
-    if (result) {
-      // Reset trip data and UI
-      setTripData({});
-      setdeliveryBillsList([]);
-      setOpenChargesModal(false);
-      setOpenPdfModal(false);
-      setPrintBillsFlag(false);
-        
-      // ✅ Wait a moment or directly refetch bills
-      await refreshBillsData(); 
-      
-      console.log("Bills refetched after trip creation");
-    } else {
-      console.error("Failed to create trip. Please try again.");
-    }
-  } catch (err) {
-    console.error("Error creating trip:", err);
-  }
-  };  
-
-const handleCreateTrip = async () => {
-  try {
-    if (tripIds.length === 0) {
-      alert("No bills selected");
+    if (tripIds.length === 0 || deliveryBillsList.length === 0) {
+      alert("Please add at least one bill before setting a trip.");
       return;
     }
 
-    const result = await createTrip({
-      ...tripData,
-      bills: tripIds,
-    });
-
-    if (result) {
-      console.log("Trip created successfully:", result);
-      setCreatedTripId(result?.tripId || null);
-      setOpenTripSuccessDialog(true);
-    }
-
-    if (!result?._id) throw new Error("Trip creation failed");
-
-   
-
-    // ❌ REMOVE BILL STATUS UPDATE FROM HERE
-
-     if (result) {
-      // Reset trip data and UI
-      setTripData({});
-      setdeliveryBillsList([]);
-      setOpenChargesModal(false);
-      setOpenPdfModal(false);
-      setPrintBillsFlag(false);
-
-      // ✅ Wait a moment or directly refetch bills
-      await refreshBillsData(); 
-      
-      console.log("Bills refetched after trip creation");
-    } else {
-      console.error("Failed to create trip. Please try again.");
-    }
-
-    
-
-    await refreshBillsData();
-
-    console.log("✅ Trip + Bills synced");
-
-  } catch (err) {
-    console.error(err);
-  }
-};
-
-  const handleSuccessDailogClose = () => {
-    setOpenTripSuccessDialog(false)
+    setOpenChargesModal(true);
   };
 
-  const handlePrintTripSheet=()=>{
-    
-  }
+  const refreshBillsData = async () => {
+    try {
+      await fetchFilteredBills(billsReqBody); // reload filtered bills
 
+      setTripIds([]);
+      setdeliveryBillsList([]);
 
+      // ✅ ONLY reset driver + vehicle
+      setTripData((prev) => ({
+        ...prev,
+        driver: "",
+        vehicleNumber: "",
+      }));
+
+      if (gridRef.current?.api) {
+        gridRef.current.api.refreshCells({ force: true });
+      }
+
+      console.log("Bills refreshed successfully");
+    } catch (err) {
+      console.error("Failed to refresh bills:", err);
+    }
+  };
+
+  const handlePostTrip = async () => {
+    try {
+      console.log("Trip data being sent:", tripData);
+      const result = await createTrip(tripData); // 👈 await here
+
+      setCreatedTripId(result?._id || null);
+
+      setOpenTripSuccessDialog(true);
+
+      if (result) {
+        // Reset trip data and UI
+        setTripData({});
+        setdeliveryBillsList([]);
+        setOpenChargesModal(false);
+        setOpenPdfModal(false);
+        setPrintBillsFlag(false);
+
+        // ✅ Wait a moment or directly refetch bills
+        await refreshBillsData();
+
+        console.log("Bills refetched after trip creation");
+      } else {
+        console.error("Failed to create trip. Please try again.");
+      }
+    } catch (err) {
+      console.error("Error creating trip:", err);
+    }
+  };
+
+  const handleCreateTrip = async () => {
+    try {
+      if (tripIds.length === 0) {
+        alert("No bills selected");
+        return;
+      }
+
+      const result = await createTrip({
+        ...tripData,
+        bills: tripIds,
+      });
+
+      if (result) {
+        console.log("Trip created successfully:", result);
+        setCreatedTripId(result?.tripId || null);
+        setOpenTripSuccessDialog(true);
+      }
+
+      if (!result?._id) throw new Error("Trip creation failed");
+
+      // ❌ REMOVE BILL STATUS UPDATE FROM HERE
+
+      if (result) {
+        // Reset trip data and UI
+        setTripData({});
+        setdeliveryBillsList([]);
+        setOpenChargesModal(false);
+        setOpenPdfModal(false);
+        setPrintBillsFlag(false);
+
+        // ✅ Wait a moment or directly refetch bills
+        await refreshBillsData();
+
+        console.log("Bills refetched after trip creation");
+      } else {
+        console.error("Failed to create trip. Please try again.");
+      }
+
+      await refreshBillsData();
+
+      console.log("✅ Trip + Bills synced");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSuccessDailogClose = () => {
+    setOpenTripSuccessDialog(false);
+  };
+
+  const handlePrintTripSheet = () => {};
 
   const handleStatusChange = async (params, field) => {
     const { data, newValue } = params;
-    const id = data.id|| data._id; // Use _id if id is not available
+    const id = data.id || data._id; // Use _id if id is not available
     // Ensure boolean value is sent
-  let value = newValue;
-  if (field === "paymentStatus") {
-    value = Boolean(newValue);
-  }
-  if(id){
-    console.log("Updating bill with ID:", id, "Field:", field, "Value:", value);
-  }
-  if(!id){
-    console.error("ID is not available in the data object");
-    return;
-  }
-  await updateBill(id, { [field]: value });
-};
-    
-  
+    let value = newValue;
+    if (field === "paymentStatus") {
+      value = Boolean(newValue);
+    }
+    if (id) {
+      console.log(
+        "Updating bill with ID:",
+        id,
+        "Field:",
+        field,
+        "Value:",
+        value,
+      );
+    }
+    if (!id) {
+      console.error("ID is not available in the data object");
+      return;
+    }
+    await updateBill(id, { [field]: value });
+  };
 
   // Function to handle row class dynamically based on status
   const getRowClass = (params) => {
@@ -940,48 +909,29 @@ const handleCreateTrip = async () => {
       years,
       "find",
       "yearlent",
-      years[years.length - 1]
+      years[years.length - 1],
     );
   };
-
-  
 
   const handleReqBodyInputChange = (name, value) => {
     setBillsReqBody((prevState) => ({ ...prevState, [name]: value }));
   };
 
-
-
   useEffect(() => {
     const newYears = getYearsFromYearToCurrent(2024);
     setYears(newYears);
-    
-    handleReqBodyInputChange("month",months[dateObj.getMonth()])
-    handleReqBodyInputChange("year",dateObj.getFullYear())
-    
+
+    handleReqBodyInputChange("month", months[dateObj.getMonth()]);
+    handleReqBodyInputChange("year", dateObj.getFullYear());
   }, []);
 
+  const handleSubmit = async () => {};
 
-
-
-      
-      
-  
-
-  const handleSubmit =async()=>{
-   
-  }
-  
-
- 
-
-
-  
   // ── LR Number Search ──────────────────────────────────────────────────────
-  const [lrSearchInput, setLrSearchInput]     = useState("");
-  const [lrSearchResult, setLrSearchResult]   = useState(null);
+  const [lrSearchInput, setLrSearchInput] = useState("");
+  const [lrSearchResult, setLrSearchResult] = useState(null);
   const [lrSearchLoading, setLrSearchLoading] = useState(false);
-  const [lrSearchError, setLrSearchError]     = useState("");
+  const [lrSearchError, setLrSearchError] = useState("");
 
   const handleLrSearch = async () => {
     const lr = lrSearchInput.trim();
@@ -990,7 +940,9 @@ const handleCreateTrip = async () => {
     setLrSearchError("");
     setLrSearchResult(null);
     try {
-      const res = await fetch(`/api/bills/get-lr-bynumber?lrNumber=${encodeURIComponent(lr)}`);
+      const res = await fetch(
+        `/api/bills/get-lr-bynumber?lrNumber=${encodeURIComponent(lr)}`,
+      );
       if (!res.ok) {
         const err = await res.json();
         setLrSearchError(err.error || "Bill not found");
@@ -1006,53 +958,51 @@ const handleCreateTrip = async () => {
   };
   // ─────────────────────────────────────────────────────────────────────────
 
-//  loading || years.length === 0
+  //  loading || years.length === 0
 
   if (loading || years.length === 0) {
-    return <div className="w-full h-[calc(100vh-62px)] gap-5 flex flex-col justify-center items-center"  >
-    <div className=" flex   justify-center items-center" >
-            <Lottie
+    return (
+      <div className="w-full h-[calc(100vh-62px)] gap-5 flex flex-col justify-center items-center">
+        <div className=" flex   justify-center items-center">
+          <Lottie
             animationData={loadingAnimationData}
             loop={true}
             className="flex justify-center items-center w-64 h-auto lg:w-[484px] lg:h-auto "
             alt="loading"
-            
-            />
+          />
+        </div>
+        <div>Loading...</div>
       </div>
-      <div>
-        Loading...
-      </div>
-    </div>
-       // You can replace this with a spinner or fallback UI
+    );
+    // You can replace this with a spinner or fallback UI
   }
 
-const handleTabsChange = (event, newValue) => {
-  setTabsValue(newValue);
+  const handleTabsChange = (event, newValue) => {
+    setTabsValue(newValue);
 
-  setBillsReqBody((prev) => ({
-    ...prev,
-    direction: TAB_DIRECTION_MAP[newValue],
-  }));
-  console.log("Tab changed to:", tabsValue, "Updated req body:", billsReqBody);
-};
-
-
-
-   
-
-  
+    setBillsReqBody((prev) => ({
+      ...prev,
+      direction: TAB_DIRECTION_MAP[newValue],
+    }));
+    console.log(
+      "Tab changed to:",
+      tabsValue,
+      "Updated req body:",
+      billsReqBody,
+    );
+  };
 
   return (
     <>
-      <div className="  flex justify-start md:px-2 mt-1  ">
-        <form className="flex gap-1  ">
-          <div className="  flex-grow gap-1 flex scale-75 md:scale-100  ">
+      <div className="flex justify-start md:px-2 mt-1">
+        <form className="flex w-full gap-2">
+          <div className="flex flex-wrap items-start gap-2 flex-grow">
             <div>
-              <FormControl>
-                <InputLabel id="demo-simple-select-label">Month</InputLabel>
+              <FormControl sx={{ minWidth: 86 }}>
+                <InputLabel id="month-select-label">Month</InputLabel>
                 <Select
-                  labelId="demo-simple-select-label"
-                  id="demo-simple-select"
+                  labelId="month-select-label"
+                  id="month-select"
                   defaultValue={months[dateObj.getMonth()]}
                   label="Month"
                   onChange={(e) => {
@@ -1069,11 +1019,11 @@ const handleTabsChange = (event, newValue) => {
             </div>
 
             <div>
-              <FormControl>
-                <InputLabel id="demo-simple-select-label">year</InputLabel>
+              <FormControl sx={{ minWidth: 92 }}>
+                <InputLabel id="year-select-label">Year</InputLabel>
                 <Select
-                  labelId="demo-simple-select-label"
-                  id="demo-simple-select"
+                  labelId="year-select-label"
+                  id="year-select"
                   defaultValue={years.find(
                     (year) => year === dateObj.getFullYear(),
                   )}
@@ -1092,20 +1042,22 @@ const handleTabsChange = (event, newValue) => {
             </div>
 
             <div>
-              <FormControl>
-                <InputLabel id="demo-simple-select-label">Agency</InputLabel>
+              <FormControl sx={{ minWidth: 160 }}>
+                <InputLabel id="agency-select-label">Agency</InputLabel>
                 <Select
                   value={billsReqBody.toBranch}
-                  labelId="demo-simple-select-label"
+                  labelId="agency-select-label"
+                  id="agency-select"
+                  label="Agency"
                   onChange={(e) => {
-                    
-                   
                     setBillsReqBody((prev) => ({
                       ...prev,
                       toBranch: e.target.value,
                     }));
                     setSelectedBranch(
-                      BranchesEcludingUserBranch.find((branch) => branch._id === e.target.value),
+                      BranchesEcludingUserBranch.find(
+                        (branch) => branch._id === e.target.value,
+                      ),
                     );
                   }}
                 >
@@ -1175,23 +1127,23 @@ const handleTabsChange = (event, newValue) => {
               </button>
             </div>
 
-            <div className="flex justify-center items-end  ">
+            <div className="  ">
               <div className="flex items-center mb-4 ml-2 ">
-               <input
-  checked={billsReqBody.status.every(
-    (s) => !DELIVERED_STATUSES.includes(s)
-  )}
-  onChange={(e) => {
-    if (e.target.checked) {
-      // ✅ show UNDELIVERED
-      handleReqBodyInputChange("status", UNDELIVERED_STATUSES);
-    } else {
-      // ❌ show DELIVERED only
-      handleReqBodyInputChange("status", DELIVERED_STATUSES);
-    }
-  }}
-  type="checkbox"
-/>                                                                            
+                <input
+                  checked={billsReqBody.status.every(
+                    (s) => !DELIVERED_STATUSES.includes(s),
+                  )}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      // ✅ show UNDELIVERED
+                      handleReqBodyInputChange("status", UNDELIVERED_STATUSES);
+                    } else {
+                      // ❌ show DELIVERED only
+                      handleReqBodyInputChange("status", DELIVERED_STATUSES);
+                    }
+                  }}
+                  type="checkbox"
+                />
                 <label className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">
                   undelivered
                 </label>
@@ -1225,34 +1177,37 @@ const handleTabsChange = (event, newValue) => {
               </Tabs>
             </div>
           </div>
-           {/* ── LR Number Search Bar ─────────────────────────────────────── */}
-      <div className="flex justify-end items-center gap-2 px-3 py-2">
-        <div className="relative flex items-center">
-          <input
-            type="text"
-            value={lrSearchInput}
-            onChange={(e) => {
-              setLrSearchInput(e.target.value);
-              // clear result when user clears the input
-              if (!e.target.value) { setLrSearchResult(null); setLrSearchError(""); }
-            }}
-            onKeyDown={(e) => { if (e.key === "Enter") handleLrSearch(); }}
-            placeholder="Search by LR Number..."
-            className="border border-gray-300 rounded-l-md px-3 py-2 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            onClick={handleLrSearch}
-            disabled={lrSearchLoading}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-r-md disabled:opacity-50"
-          >
-            {lrSearchLoading ? "..." : "Search"}
-          </button>
-        </div>
-      </div>
+          {/* ── LR Number Search Bar ─────────────────────────────────────── */}
+          <div className="flex justify-end items-center gap-2 px-3 py-2">
+            <div className="relative flex items-center">
+              <input
+                type="text"
+                value={lrSearchInput}
+                onChange={(e) => {
+                  setLrSearchInput(e.target.value);
+                  // clear result when user clears the input
+                  if (!e.target.value) {
+                    setLrSearchResult(null);
+                    setLrSearchError("");
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleLrSearch();
+                }}
+                placeholder="Search by LR Number..."
+                className="border border-gray-300 rounded-l-md px-3 py-2 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                onClick={handleLrSearch}
+                disabled={lrSearchLoading}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-r-md disabled:opacity-50"
+              >
+                {lrSearchLoading ? "..." : "Search"}
+              </button>
+            </div>
+          </div>
         </form>
       </div>
-
-     
 
       {/* ── LR Search Result ─────────────────────────────────────────── */}
       {lrSearchError && (
@@ -1264,26 +1219,55 @@ const handleTabsChange = (event, newValue) => {
         <div className="mx-3 mb-3 border border-blue-200 rounded-md bg-blue-50 p-3 text-sm">
           {/* Header row */}
           <div className="flex justify-between items-center mb-3 pb-2 border-b border-blue-200">
-            <span className="font-bold text-blue-800 text-base">{lrSearchResult.lrNumber}</span>
+            <span className="font-bold text-blue-800 text-base">
+              {lrSearchResult.lrNumber}
+            </span>
             <Link href={`/admin/bills/${lrSearchResult._id}`}>
-              <span className="text-blue-600 underline text-xs cursor-pointer">View Full Bill →</span>
+              <span className="text-blue-600 underline text-xs cursor-pointer">
+                View Full Bill →
+              </span>
             </Link>
           </div>
           {/* Info grid — two columns of label:value pairs */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-gray-700">
             {[
-              { label: "Consigner",  value: lrSearchResult.consigner?.name ?? "—" },
-              { label: "Consignees", value: lrSearchResult.consignees?.map(c => c.name).join(", ") || "—" },
-              { label: "Parcels",    value: lrSearchResult.totalNumOfParcels ?? "—" },
-              { label: "Amount",     value: `₹${lrSearchResult.totalAmount ?? "—"}` },
-              { label: "From",       value: lrSearchResult.fromBranch?.name ?? "—" },
-              { label: "To",         value: lrSearchResult.toBranch?.name ?? lrSearchResult.to ?? "—" },
-              { label: "Payment",    value: lrSearchResult.paymentStatus ? "Paid" : "To Pay" },
-              { label: "Status",     value: lrSearchResult.status ?? "—" },
+              {
+                label: "Consigner",
+                value: lrSearchResult.consigner?.name ?? "—",
+              },
+              {
+                label: "Consignees",
+                value:
+                  lrSearchResult.consignees?.map((c) => c.name).join(", ") ||
+                  "—",
+              },
+              {
+                label: "Parcels",
+                value: lrSearchResult.totalNumOfParcels ?? "—",
+              },
+              {
+                label: "Amount",
+                value: `₹${lrSearchResult.totalAmount ?? "—"}`,
+              },
+              { label: "From", value: lrSearchResult.fromBranch?.name ?? "—" },
+              {
+                label: "To",
+                value:
+                  lrSearchResult.toBranch?.name ?? lrSearchResult.to ?? "—",
+              },
+              {
+                label: "Payment",
+                value: lrSearchResult.paymentStatus ? "Paid" : "To Pay",
+              },
+              { label: "Status", value: lrSearchResult.status ?? "—" },
             ].map(({ label, value }) => (
               <div key={label} className="flex flex-col">
-                <span className="text-xs text-gray-500 font-semibold uppercase tracking-wide">{label}</span>
-                <span className="text-gray-800 font-medium mt-0.5">{value}</span>
+                <span className="text-xs text-gray-500 font-semibold uppercase tracking-wide">
+                  {label}
+                </span>
+                <span className="text-gray-800 font-medium mt-0.5">
+                  {value}
+                </span>
               </div>
             ))}
           </div>
@@ -1385,7 +1369,7 @@ const handleTabsChange = (event, newValue) => {
                 placeholder="Enter Driver's Name Here"
               />
             </div>
-             <div>
+            <div>
               <TextField
                 fullWidth
                 label="Vehicle Number"
@@ -1454,8 +1438,7 @@ const handleTabsChange = (event, newValue) => {
                   onClick={() => {
                     (handleOnChangeAgencyCommisionCharges("chargeAmount", 0),
                       handleOnChangeAgencyCommisionCharges("addedFlag", false));
-                    console.log("agency commision ",agencyCommissionCharges);
-                    
+                    console.log("agency commision ", agencyCommissionCharges);
                   }}
                 >
                   Remove
@@ -1549,18 +1532,17 @@ const handleTabsChange = (event, newValue) => {
         </DialogActions>
       </Dialog>
 
-      <div className="text-lg font-bold p-2 justify-center text-center mb-4">Trip sheet preview</div>
+      <div className="text-lg font-bold p-2 justify-center text-center mb-4">
+        Trip sheet preview
+      </div>
 
       {true && (
         <div>
-          
-          <div id="pdfContent"  className=" p-1 ">
+          <div id="pdfContent" className=" p-1 ">
             <div className=" text-black p-1 border-2 bg-slate-50 w-full  ">
               {/* header section */}
 
               <div className=" p-2  flex justify-center items-center  ">
-                
-
                 <div className=" flex flex-col items-center ">
                   <div>
                     <div className="  font-bebas font-bold text-5xl  tracking-[10px]  ">
@@ -1577,8 +1559,6 @@ const handleTabsChange = (event, newValue) => {
                   </div>
                   <div className="">(Trip Sheet)</div>
                 </div>
-
-               
               </div>
               <div className="bg-black w-full h-[2px] "></div>
               <div className="flex justify-between mb-2  ">

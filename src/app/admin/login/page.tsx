@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
+
+const REMEMBERED_LOGIN_ID_KEY = "rememberedLoginId";
 
 export default function AdminLoginPage() {
   const [loginId, setLoginId] = useState("");
@@ -10,6 +12,15 @@ export default function AdminLoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const { login } = useAuthStore();
+
+  useEffect(() => {
+    const rememberedLoginId = localStorage.getItem(REMEMBERED_LOGIN_ID_KEY);
+
+    if (rememberedLoginId) {
+      setLoginId(rememberedLoginId);
+      setRememberMe(true);
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,12 +34,18 @@ export default function AdminLoginPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ loginId, password }),
+        body: JSON.stringify({ loginId, password, rememberMe }),
       });
 
       const data = await res.json();
 
       if (res.ok) {
+        if (rememberMe) {
+          localStorage.setItem(REMEMBERED_LOGIN_ID_KEY, loginId);
+        } else {
+          localStorage.removeItem(REMEMBERED_LOGIN_ID_KEY);
+        }
+
         login(data.token, data.user);
         shouldResetLoading = false;
         window.location.assign("/admin");
@@ -175,7 +192,7 @@ export default function AdminLoginPage() {
           the admin panel.
         </p>
 
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleLogin} autoComplete="on">
           {/* Login ID */}
           <div style={{ marginBottom: 16 }}>
             <label
@@ -213,6 +230,9 @@ export default function AdminLoginPage() {
               </span>
               <input
                 type="text"
+                id="loginId"
+                name="username"
+                autoComplete="username"
                 placeholder="Enter your login ID"
                 value={loginId}
                 onChange={(e) => setLoginId(e.target.value)}
@@ -281,6 +301,9 @@ export default function AdminLoginPage() {
               </span>
               <input
                 type={showPassword ? "text" : "password"}
+                id="password"
+                name="password"
+                autoComplete="current-password"
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
