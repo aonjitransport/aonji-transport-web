@@ -24,7 +24,8 @@ export async function middleware(req: NextRequest) {
   pathname.startsWith("/admin/login") ||
   pathname.startsWith("/api/init") ||
   pathname.startsWith("/api/auth")||
-  pathname.startsWith("/api/public/")
+  pathname.startsWith("/api/public/")||
+   pathname.startsWith("/api/cron/")
 ) {
   return NextResponse.next();
 }
