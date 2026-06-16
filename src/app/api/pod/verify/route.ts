@@ -7,6 +7,8 @@ import { Pod } from "models/Pod";
 import { Bill } from "models/Bill";
 import { Trip } from "models/Trip";
 import { requireRole } from "lib/auth";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { s3Client, S3_BUCKET } from "lib/s3";
 
 // Image-based verification: a "queue item" is one PENDING image inside a pod.
 export type PodQueueItem = {
@@ -76,7 +78,6 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   await connectToDatabase();
-  const session = await mongoose.startSession();
 
   try {
     const auth = await requireRole(req, ["admin", "super_admin"]);
@@ -91,105 +92,145 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
+    const session = await mongoose.startSession();
     session.startTransaction();
 
-    const pod: any = await Pod.findById(podId).session(session);
-    if (!pod) throw new Error("POD not found");
+    try {
+      const pod: any = await Pod.findById(podId).session(session);
+      if (!pod) throw new Error("POD not found");
 
-    const img: any = (pod.images as any[]).find(
-      (i: any) => i?._id?.toString() === String(imageId),
-    );
-    if (!img) throw new Error("POD image not found");
+      const img: any = (pod.images as any[]).find(
+        (i: any) => i?._id?.toString() === String(imageId),
+      );
+      if (!img) throw new Error("POD image not found");
 
-    const currentStatus = img.status ?? "PENDING";
-    if (currentStatus !== "PENDING") {
-      await session.abortTransaction();
-      session.endSession();
-      return NextResponse.json({ error: "Image already processed" }, { status: 400 });
-    }
-
-    if (action === "REJECT") {
-      img.status = "REJECTED";
-      img.rejectionReason = rejectionReason || "Rejected";
-      img.verifiedAt = new Date();
-      img.verifiedBy = auth.user.id;
-      img.lrNumber = undefined;
-      img.billId = undefined;
-
-      rollupPodStatus(pod);
-      await pod.save({ session });
-
-      await session.commitTransaction();
-      session.endSession();
-      return NextResponse.json({ success: true, message: "Image rejected" });
-    }
-
-    if (action === "VERIFY") {
-      if (!lrNumber) {
+      const currentStatus = img.status ?? "PENDING";
+      if (currentStatus !== "PENDING") {
         await session.abortTransaction();
         session.endSession();
-        return NextResponse.json(
-          { error: "lrNumber required for verification" },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Image already processed" }, { status: 400 });
       }
 
-      img.status = "VERIFIED";
-      img.verifiedAt = new Date();
-      img.verifiedBy = auth.user.id;
-      img.lrNumber = String(lrNumber);
+      if (action === "REJECT") {
+        const rejectedS3Key = img.s3Key;
 
-      // Update each linked bill using this image's s3Key.
-      const bill = await Bill.findOne({ lrNumber: String(lrNumber) }).session(session);
-      if (!bill) throw new Error(`Bill not found for LR: ${lrNumber}`);
+        img.status = "REJECTED";
+        img.rejectionReason = rejectionReason || "Rejected";
+        img.verifiedAt = new Date();
+        img.verifiedBy = auth.user.id;
+        img.lrNumber = undefined;
+        img.billId = undefined;
 
-      img.billId = bill._id;
+        rollupPodStatus(pod);
+        await pod.save({ session });
 
-      bill.status = "POD_RECEIVED";
-      bill.podVerified = true;
-      bill.podVerifiedAt = new Date();
-      bill.podDocument = img?.s3Key || null;
-      bill.statusHistory.push({
-        status: "POD_RECEIVED",
-        date: new Date(),
-        updatedBy: auth.user.id,
-      });
-      await bill.save({ session });
+        await session.commitTransaction();
+        session.endSession();
 
-      const trip = await Trip.findOne({ bills: bill._id }).session(session);
-      if (trip) {
-        const unverifiedCount = await Bill.countDocuments({
-          _id: { $in: trip.bills },
-          podVerified: false,
-        }).session(session);
+        const s3DeleteResult = await deleteRejectedPodImage(rejectedS3Key);
 
-        if (unverifiedCount === 0 && trip.status !== "COMPLETED") {
-          trip.status = "COMPLETED";
-          trip.statusHistory.push({
-            status: "COMPLETED",
-            date: new Date(),
-            updatedBy: auth.user.id,
-          });
-          await trip.save({ session });
+        return NextResponse.json({
+          success: true,
+          message: s3DeleteResult.deleted
+            ? "Image rejected and deleted from S3"
+            : "Image rejected, but S3 deletion failed",
+          s3Deleted: s3DeleteResult.deleted,
+          s3DeleteError: s3DeleteResult.error,
+        });
+      }
+
+      if (action === "VERIFY") {
+        if (!lrNumber) {
+          await session.abortTransaction();
+          session.endSession();
+          return NextResponse.json(
+            { error: "lrNumber required for verification" },
+            { status: 400 },
+          );
         }
+
+        img.status = "VERIFIED";
+        img.verifiedAt = new Date();
+        img.verifiedBy = auth.user.id;
+        img.lrNumber = String(lrNumber);
+
+        // Update each linked bill using this image's s3Key.
+        const bill = await Bill.findOne({ lrNumber: String(lrNumber) }).session(session);
+        if (!bill) throw new Error(`Bill not found for LR: ${lrNumber}`);
+
+        img.billId = bill._id;
+
+        bill.status = "POD_RECEIVED";
+        bill.podVerified = true;
+        bill.podVerifiedAt = new Date();
+        bill.podDocument = img?.s3Key || null;
+        bill.statusHistory.push({
+          status: "POD_RECEIVED",
+          date: new Date(),
+          updatedBy: auth.user.id,
+        });
+        await bill.save({ session });
+
+        const trip = await Trip.findOne({ bills: bill._id }).session(session);
+        if (trip) {
+          const unverifiedCount = await Bill.countDocuments({
+            _id: { $in: trip.bills },
+            podVerified: false,
+          }).session(session);
+
+          if (unverifiedCount === 0 && trip.status !== "COMPLETED") {
+            trip.status = "COMPLETED";
+            trip.statusHistory.push({
+              status: "COMPLETED",
+              date: new Date(),
+              updatedBy: auth.user.id,
+            });
+            await trip.save({ session });
+          }
+        }
+
+        rollupPodStatus(pod);
+        await pod.save({ session });
+
+        await session.commitTransaction();
+        session.endSession();
+        return NextResponse.json({ success: true, message: "Image verified" });
       }
 
-      rollupPodStatus(pod);
-      await pod.save({ session });
-
-      await session.commitTransaction();
+      await session.abortTransaction();
       session.endSession();
-      return NextResponse.json({ success: true, message: "Image verified" });
+      return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
     }
-
-    await session.abortTransaction();
-    session.endSession();
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error: any) {
-    await session.abortTransaction();
-    session.endSession();
     console.error("POD image verification failed:", error);
     return NextResponse.json({ error: "Failed to verify image" }, { status: 500 });
+  }
+}
+
+async function deleteRejectedPodImage(
+  s3Key?: string,
+): Promise<{ deleted: boolean; error?: string }> {
+  if (!s3Key) {
+    return { deleted: false, error: "Missing S3 key" };
+  }
+
+  try {
+    await s3Client.send(
+      new DeleteObjectCommand({
+        Bucket: S3_BUCKET,
+        Key: s3Key,
+      }),
+    );
+
+    return { deleted: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown S3 delete error";
+    console.error("Failed to delete rejected POD image from S3:", { s3Key, error });
+    return { deleted: false, error: message };
   }
 }
 
