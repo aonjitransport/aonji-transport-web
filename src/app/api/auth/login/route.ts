@@ -7,6 +7,16 @@ import { signToken } from "../../../../../lib/jwt";
 
 const REMEMBER_ME_MAX_AGE = 60 * 60 * 24 * 30;
 
+function isHttpsRequest(req: Request) {
+  const forwardedProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+
+  if (forwardedProto) {
+    return forwardedProto === "https";
+  }
+
+  return new URL(req.url).protocol === "https:";
+}
+
 export async function POST(req: Request) {
   try {
     await connectToDatabase();
@@ -67,7 +77,7 @@ export async function POST(req: Request) {
     // 🍪 cookie used by middleware
     res.cookies.set("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isHttpsRequest(req),
       sameSite: "lax",
       path: "/",
       ...(rememberMe ? { maxAge: REMEMBER_ME_MAX_AGE } : {}),
