@@ -82,19 +82,19 @@ export default function TrackPage() {
     <div className="min-h-screen bg-white">
       <Header />
 
-      <section className="min-h-[calc(100vh-62px)] grid md:grid-cols-2 items-center px-6 md:px-12 lg:px-20 py-10 gap-8 overflow-hidden">
+      <section className="min-h-[calc(100svh-62px)] md:min-h-[calc(100vh-62px)] grid grid-cols-1 md:grid-cols-2 items-center px-4 sm:px-6 md:px-12 lg:px-20 py-8 md:py-10 gap-8 overflow-hidden">
         {/* LEFT */}
-        <div className="flex flex-col justify-center max-w-lg">
-          <h1 className="font-bebas font-bold text-5xl md:text-6xl lg:text-7xl text-indigo-900 tracking-wide leading-tight">
+        <div className="flex flex-col justify-center max-w-lg w-full">
+          <h1 className="font-bebas font-bold text-4xl sm:text-5xl md:text-6xl lg:text-7xl text-indigo-900 tracking-wide leading-tight">
             Track Your Shipment
           </h1>
-          <p className="font-roboto text-gray-500 text-base md:text-lg mt-3 mb-8 leading-relaxed">
+          <p className="font-roboto text-gray-500 text-sm sm:text-base md:text-lg mt-3 mb-6 md:mb-8 leading-relaxed">
             Enter your LR number below to track
             <br />
             your shipment in real-time.
           </p>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <input
               value={lr}
               onChange={(e) => setLr(e.target.value.toUpperCase())}
@@ -154,9 +154,9 @@ export default function TrackPage() {
         </div>
 
         {/* RIGHT — illustration or result card */}
-        <div className="hidden md:flex justify-center items-start h-full py-4">
+        <div className="flex justify-center items-start h-full py-2 md:py-4 w-full min-w-0">
           {!data ? (
-            <div className="relative w-full h-[520px]">
+            <div className="relative w-full h-[260px] sm:h-[340px] md:h-[520px]">
               <Image
                 src={shipmenttrackimage}
                 alt="Track Shipment Illustration"
@@ -165,9 +165,9 @@ export default function TrackPage() {
               />
             </div>
           ) : (
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 w-full max-h-[calc(100vh-100px)] overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 w-full max-h-none md:max-h-[calc(100vh-100px)] overflow-y-visible md:overflow-y-auto">
               {/* ── CARD HEADER ── */}
-              <div className="flex items-start justify-between mb-1">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-1">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
                     <FaBox className="text-blue-600 text-xl" />
@@ -181,7 +181,7 @@ export default function TrackPage() {
                     </p>
                   </div>
                 </div>
-                <span className="px-4 py-1.5 rounded-lg text-xs font-bold border border-blue-200 text-blue-700 bg-blue-50 font-roboto tracking-wide whitespace-nowrap">
+                <span className="px-4 py-1.5 rounded-lg text-xs font-bold border border-blue-200 text-blue-700 bg-blue-50 font-roboto tracking-wide whitespace-nowrap self-start">
                   {data.status.replace(/_/g, " ")}
                 </span>
               </div>
@@ -285,7 +285,7 @@ export default function TrackPage() {
               </div>
 
               {/* ── BOTTOM: details + POD side by side ── */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Shipment Details */}
                 <div className="border border-gray-100 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-4">

@@ -84,10 +84,10 @@ const homePage = () => {
       {/* section-1 Hero section   */}
       {/* section-1 Hero section */}
       {/* section-1 Hero section */}
-      <section className="grid md:grid-cols-2 lg:grid-cols-2 px-4 md:px-8 lg:px-12 items-center min-h-[calc(100vh-62px)] overflow-hidden  ">
+      <section className="grid grid-cols-1 md:grid-cols-2 px-4 sm:px-6 md:px-8 lg:px-12 items-center gap-4 md:gap-8 min-h-[calc(100svh-62px)] md:min-h-[calc(100vh-62px)] overflow-hidden py-6 md:py-0">
         {/* LEFT CONTENT */}
-        <div className="flex justify-start items-center py-8 md:py-0">
-          <div className="max-w-xl">
+        <div className="flex justify-start items-center py-2 md:py-0">
+          <div className="max-w-xl w-full">
             {/* TRUST BADGE */}
             <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-1.5 rounded-full text-xs font-semibold font-roboto mb-5 uppercase tracking-wide">
               <svg
@@ -105,13 +105,13 @@ const homePage = () => {
             </div>
 
             {/* HEADING */}
-            <h1 className="font-bebas font-extrabold text-4xl md:text-5xl lg:text-6xl text-indigo-900 tracking-wide leading-tight">
+            <h1 className="font-bebas font-extrabold text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-indigo-900 tracking-wide leading-tight">
               Delivering Fast, Secure, and Reliable Logistics for Growing
               Businesses.
             </h1>
 
             {/* DESCRIPTION */}
-            <p className="font-roboto text-base md:text-lg text-gray-600 mt-4 leading-relaxed">
+            <p className="font-roboto text-sm sm:text-base md:text-lg text-gray-600 mt-4 leading-relaxed">
               With 15+ years of experience, Aonji Transport delivers secure,
               on-time parcel solutions across industries. We handle your
               shipments with precision — so you can focus on growing your
@@ -119,7 +119,7 @@ const homePage = () => {
             </p>
 
             {/* TRUST POINTS — icon row like reference */}
-            <div className="flex flex-wrap gap-6 mt-5 text-gray-700 font-roboto text-sm">
+            <div className="flex flex-wrap gap-4 sm:gap-6 mt-5 text-gray-700 font-roboto text-sm">
               <div className="flex items-center gap-1.5">
                 <svg
                   className="w-4 h-4 text-blue-600 flex-shrink-0"
@@ -180,10 +180,10 @@ const homePage = () => {
             </div>
 
             {/* CTA BUTTONS */}
-            <div className="flex gap-3 mt-6 flex-wrap items-center">
+            <div className="flex flex-col sm:flex-row gap-3 mt-6 flex-wrap items-stretch sm:items-center">
               <button 
               onClick={() => setShipmentDialogOpen(true)}
-              className="flex items-center gap-2 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium font-roboto rounded-lg text-sm px-6 py-3 transition-colors">
+              className="flex items-center justify-center gap-2 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium font-roboto rounded-lg text-sm px-6 py-3 transition-colors">
                 Book Your Shipment →
               </button>
 
@@ -191,7 +191,7 @@ const homePage = () => {
                 <Link href="/shipment-tracking">Track Your Parcel</Link>
               </button>
 
-              <button className="flex items-center gap-2 py-3 px-5 text-sm font-medium text-gray-800 bg-white rounded-full border border-gray-300 hover:bg-gray-50 hover:text-blue-700 transition-colors">
+              <button className="flex items-center justify-center gap-2 py-3 px-5 text-sm font-medium text-gray-800 bg-white rounded-full border border-gray-300 hover:bg-gray-50 hover:text-blue-700 transition-colors">
                 Talk to Us
                 <svg
                   className="w-4 h-4"
@@ -206,8 +206,8 @@ const homePage = () => {
         </div>
 
         {/* RIGHT SIDE — Truck, fills full height of section */}
-        <div className="hidden md:flex justify-center items-center h-full w-full py-4">
-          <div className="relative w-full h-[calc(100vh-62px)] max-h-[680px]">
+        <div className="flex justify-center items-center h-full w-full py-2 md:py-4 order-first md:order-none">
+          <div className="relative w-full h-[230px] sm:h-[300px] md:h-[calc(100vh-62px)] md:max-h-[680px]">
             <AnimatedTruck />
           </div>
         </div>

@@ -45,12 +45,12 @@ function StatCard({
 }) {
   const count = useCountUp(target, duration, triggered);
   return (
-    <div className="flex items-center gap-4 md:px-8 first:pl-0">
-      <div className="bg-blue-800/50 rounded-full p-3 flex-shrink-0">
+    <div className="flex items-center gap-3 sm:gap-4 md:px-8 first:pl-0">
+      <div className="bg-blue-800/50 rounded-full p-2.5 sm:p-3 flex-shrink-0">
         {icon}
       </div>
       <div>
-        <div className="text-white font-bebas text-3xl leading-none">
+        <div className="text-white font-bebas text-2xl sm:text-3xl leading-none">
           {count}{suffix}
         </div>
         <div className="text-blue-300 font-roboto text-xs mt-0.5">
@@ -85,7 +85,7 @@ export default function StatsBar() {
       ref={ref}
       className="bg-[#0f1f4b] py-6 px-4 md:px-12 lg:px-20"
     >
-      <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-0 divide-y md:divide-y-0 md:divide-x divide-blue-800">
+      <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-0 md:divide-x divide-blue-800">
         <StatCard icon={<FaMedal className="text-white text-2xl" />}  target={15}   suffix="+" label1="Years of"     label2="Experience"     triggered={triggered} duration={1200} />
         <StatCard icon={<FaUsers className="text-white text-2xl" />}  target={150}   suffix="+" label1="Regular"      label2="Clients"        triggered={triggered} duration={800} />
         <StatCard icon={<FaTruck className="text-white text-2xl" />}  target={10} suffix="+" label1="Lakhs of"   label2="Deliveries"      triggered={triggered} duration={1200} />
