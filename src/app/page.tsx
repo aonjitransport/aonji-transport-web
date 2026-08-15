@@ -18,7 +18,7 @@ import fairtruckimage from "../../public/assets/fairtruckvec.png";
 import growvecimage from "../../public/assets/growvec.png";
 import excellancevecimage from "../../public/assets/excelvec.png";
 
-import { FaMedal, FaUsers, FaTruck, FaClock, FaPhone } from "react-icons/fa";
+import { FaMedal, FaUsers, FaTruck, FaClock, FaPhone, FaLongArrowAltRight } from "react-icons/fa";
 import ctaBoxesImage from "../../public/assets/parcelspngvec.png"; // your vector image
 import StatsBar from "../components/animated/StatsBar";
 import step1Image from "../../public/assets/step1img.png";
@@ -184,7 +184,8 @@ const homePage = () => {
               <button 
               onClick={() => setShipmentDialogOpen(true)}
               className="flex items-center justify-center gap-2 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium font-roboto rounded-lg text-sm px-6 py-3 transition-colors">
-                Book Your Shipment →
+                Book Your Shipment
+                <FaLongArrowAltRight className="h-4 w-4" />
               </button>
 
               <button className="py-3 px-5 text-sm font-medium text-gray-800 bg-white rounded-full border border-gray-300 hover:bg-gray-50 hover:text-blue-700 transition-colors">
@@ -628,7 +629,8 @@ const homePage = () => {
             <button 
               onClick={() => setShipmentDialogOpen(true)}
             className="flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white font-roboto font-medium text-sm px-6 py-3 rounded-lg transition-colors whitespace-nowrap">
-              Book Now →
+              Book Now
+              <FaLongArrowAltRight className="h-4 w-4" />
             </button>
             <button className="flex items-center justify-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 hover:text-blue-700 text-gray-800 font-roboto font-medium text-sm px-6 py-3 rounded-lg transition-colors whitespace-nowrap">
               <FaPhone className="text-blue-600" />

@@ -11,6 +11,7 @@ import { useAuthStore } from "../../store/useAuthStore";
 import { useEffect, useState } from "react";
 import { GrDocumentVerified } from "react-icons/gr";
 import { FaTruckMoving } from "react-icons/fa";
+import { LuMail } from "react-icons/lu";
 
 import { usePathname } from "next/navigation";  
 
@@ -21,6 +22,7 @@ const Dashbord = () => {
 
   const [userBranch, setUserBranch] = useState(null);
   const [newBookingCount, setNewBookingCount] = useState(0);
+  const [newContactCount, setNewContactCount] = useState(0);
   const pathname = usePathname();
 
   
@@ -56,14 +58,25 @@ const Dashbord = () => {
 
       const fetchCount = async () => {
         try {
-          const res = await fetch("/api/shipment-bookings/count?status=NEW", {
-            method: "GET",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            signal: controller.signal,
-          });
-          const data = await res.json();
-          if (res.ok) setNewBookingCount(Number(data?.count ?? 0));
+          const [bookingRes, contactRes] = await Promise.all([
+            fetch("/api/shipment-bookings/count?status=NEW", {
+              method: "GET",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              signal: controller.signal,
+            }),
+            fetch("/api/contact-messages/count?status=NEW", {
+              method: "GET",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              signal: controller.signal,
+            }),
+          ]);
+
+          const bookingData = await bookingRes.json();
+          const contactData = await contactRes.json();
+          if (bookingRes.ok) setNewBookingCount(Number(bookingData?.count ?? 0));
+          if (contactRes.ok) setNewContactCount(Number(contactData?.count ?? 0));
         } catch {
           // ignore
         }
@@ -80,7 +93,6 @@ const Dashbord = () => {
 
       return () => controller.abort();
     }, [pathname]);
-  
 
   return (
     <>
@@ -158,6 +170,21 @@ const Dashbord = () => {
             {newBookingCount > 0 ? (
               <div className="absolute top-6 right-6 bg-red-500 text-white text-sm font-bold rounded-full min-w-10 h-10 px-3 flex items-center justify-center shadow-lg">
                 {newBookingCount}
+              </div>
+            ) : null}
+          </Link>
+        ) : null}
+
+        {role === "super_admin" || role === "admin" ? (
+          <Link
+            href="/admin/contact-messages"
+            className="relative flex flex-col justify-center items-center h-64 w-auto lg:h-72 bg-blue-900 shadow-md hover:shadow-2xl lg:rounded-2xl rounded-xl "
+          >
+            <LuMail className=" w-20 lg:w-36 h-auto " color="white" />
+            <div className="text-gray-100 mt-6">Contact Messages</div>
+            {newContactCount > 0 ? (
+              <div className="absolute top-6 right-6 bg-red-500 text-white text-sm font-bold rounded-full min-w-10 h-10 px-3 flex items-center justify-center shadow-lg">
+                {newContactCount}
               </div>
             ) : null}
           </Link>
